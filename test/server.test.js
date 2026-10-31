@@ -67,17 +67,25 @@ test('GET /api/messages returns demo messages in demo mode', async () => {
 });
 
 test('POST /api/triage scores messages', async () => {
-  const res = await fetch(`${baseUrl}/api/triage`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ messages: [{ id: 'test-1', subject: 'Urgent contract approval', snippet: 'Decision needed today' }] })
-  });
-  assert.equal(res.status, 200);
-  const data = await res.json();
-  assert.ok(data.analyses);
-  assert.ok(data.analyses['test-1']);
-  assert.equal(data.analyses['test-1'].importance, 'high');
-  assert.equal(data.analyses['test-1'].suggestedAction, 'keep');
+  const oldProvider=process.env.AI_PROVIDER, oldKey=process.env.OPENROUTER_API_KEY;
+  process.env.AI_PROVIDER='openrouter';
+  delete process.env.OPENROUTER_API_KEY;
+  try {
+    const res = await fetch(`${baseUrl}/api/triage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ messages: [{ id: 'test-1', subject: 'Urgent contract approval', snippet: 'Decision needed today' }] })
+    });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.ok(data.analyses);
+    assert.ok(data.analyses['test-1']);
+    assert.equal(data.analyses['test-1'].importance, 'high');
+    assert.equal(data.analyses['test-1'].suggestedAction, 'keep');
+  } finally {
+    if(oldProvider===undefined)delete process.env.AI_PROVIDER; else process.env.AI_PROVIDER=oldProvider;
+    if(oldKey===undefined)delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY=oldKey;
+  }
 });
 
 test('POST /api/action and /api/undo lifecycle', async () => {
@@ -274,5 +282,30 @@ test('Unit: malformed model output falls back to local triage', async () => {
     else process.env.OPENROUTER_API_KEY = oldKey;
     if (oldProvider === undefined) delete process.env.AI_PROVIDER;
     else process.env.AI_PROVIDER = oldProvider;
+  }
+});
+
+test('Unit: LM Studio triage calls the configured local model and accepts text-mode JSON', async () => {
+  const saved = Object.fromEntries(['AI_PROVIDER','LM_STUDIO_BASE_URL','LM_STUDIO_MODEL','LM_STUDIO_API_KEY'].map(key => [key,process.env[key]]));
+  const oldFetch = global.fetch;
+  let request;
+  process.env.AI_PROVIDER='lmstudio';
+  process.env.LM_STUDIO_BASE_URL='http://127.0.0.1:1234/v1';
+  process.env.LM_STUDIO_MODEL='test-local-model';
+  delete process.env.LM_STUDIO_API_KEY;
+  global.fetch=async(url,options)=>{
+    request={url,body:JSON.parse(options.body)};
+    return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({emails:[{id:'local-1',importance:'high',score:0.9,summary:'Approval needed today.',reason:'Has a same-day deadline.',suggestedAction:'keep'}]})}}]}),{status:200});
+  };
+  try {
+    const result=await modelTriage([{id:'local-1',subject:'Approve by today',body:'Please approve this today.'}],{});
+    assert.equal(request.url,'http://127.0.0.1:1234/v1/chat/completions');
+    assert.equal(request.body.model,'test-local-model');
+    assert.deepEqual(request.body.response_format,{type:'text'});
+    assert.equal(result.source,'lmstudio');
+    assert.equal(result.analyses['local-1'].importance,'high');
+  } finally {
+    global.fetch=oldFetch;
+    for(const [key,value] of Object.entries(saved)) if(value===undefined) delete process.env[key]; else process.env[key]=value;
   }
 });

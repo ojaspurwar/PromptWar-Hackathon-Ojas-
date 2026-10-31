@@ -261,7 +261,7 @@ async function beginSprint() {
     const result = await api('/api/triage',{method:'POST',body:JSON.stringify({messages:state.messages,aiConsent:sessionStorage.getItem('inboxsprint_openrouter_consent')==='v1'})});
     state.analyses = result.analyses || {}; state.seconds = 180;
     if (result.notice) toast(result.notice);
-    $('#ai-status').textContent = result.source === 'demo' ? 'SMART MODE' : 'ANALYZED';
+    $('#ai-status').textContent = result.source === 'lmstudio' ? 'LM STUDIO' : result.source === 'demo' ? 'LOCAL RULES' : 'ANALYZED';
     await showCountdown(); state.started=true; state.cardsAnimated=true; state.timer = setInterval(tick,1000); render();
     if (state.messages[0]) selectMessage(state.messages.find(m => !state.done.has(m.id))?.id || state.messages[0].id);
     animateTo($$('.mail-card'),{duration:650,delay:anime?.stagger?anime.stagger(65):65});
