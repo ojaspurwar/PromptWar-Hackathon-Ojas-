@@ -61,6 +61,11 @@
             <div class="progress-block"><div class="progress-meta"><span>SPRINT PROGRESS</span><strong><span id="done-count">0</span><span class="progress-divider">/</span><span id="total-count">8</span> cleared</strong></div><div class="progress-track" role="progressbar" aria-label="Sprint progress" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0"><div class="progress-fill" id="progress-fill"></div><span class="progress-ends"></span></div></div>
             <div class="mail-list" id="mail-list"><div class="loading-state">Getting your inbox ready…</div></div>
             <div class="list-footer"><span>J/K move | E archive | W keep | T trash | U undo</span><button id="reset-round">Reset round</button></div><div class="recent-actions" id="recent-actions" hidden aria-label="Recently reviewed messages"></div>
+            <div class="ai-card">
+              <div class="ai-card-header"><span class="sparkle"><svg viewBox="0 0 24 24"><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3Zm7 11 .9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14Z"/></svg></span><div><strong>Your AI co-pilot</strong><small>Quietly sorting the signal</small></div><span class="ai-status" id="ai-status">READY</span></div>
+              <div class="ai-summary" id="ai-summary" role="status" aria-live="polite" tabindex="-1"><div class="summary-placeholder"><span class="placeholder-icon"><svg viewBox="0 0 24 24"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 18.5v-13Z"/><path d="M8.5 8h7m-7 4h7m-7 4h4"/></svg></span><p>Start a sprint to see what deserves your attention.</p></div></div>
+              <div class="ai-card-footer"><span><span class="sparkle-mini">✳</span> Powered by AI</span><button id="ai-settings">Settings <span>↗</span></button></div>
+            </div>
           </div>
 
           <aside class="game-column">
@@ -72,13 +77,7 @@
               <div class="round-footnote"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.6 3 8.1 7 10 4-1.9 7-5.4 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg> You stay in control of every action</div>
             </div>
 
-            <div class="review-hud" aria-label="AI review and sprint rewards">
-            <div class="ai-card">
-              <div class="ai-card-header"><span class="sparkle"><svg viewBox="0 0 24 24"><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3Zm7 11 .9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14Z"/></svg></span><div><strong>Your AI co-pilot</strong><small>Quietly sorting the signal</small></div><span class="ai-status" id="ai-status">READY</span></div>
-              <div class="ai-summary" id="ai-summary" role="status" aria-live="polite" tabindex="-1"><div class="summary-placeholder"><span class="placeholder-icon"><svg viewBox="0 0 24 24"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 18.5v-13Z"/><path d="M8.5 8h7m-7 4h7m-7 4h4"/></svg></span><p>Start a sprint to see what deserves your attention.</p></div></div>
-              <div class="ai-card-footer"><span><span class="sparkle-mini">✳</span> Powered by AI</span><button id="ai-settings">Settings <span>↗</span></button></div>
-            </div>
-
+            <div class="review-hud" aria-label="Sprint rewards">
             <div class="score-card"><div class="score-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5 14.6 9l6 .9-4.3 4.2 1 5.9-5.3-2.8-5.3 2.8 1-5.9-4.3-4.2 6-.9L12 3.5Z"/></svg></div><div><small>THIS SPRINT</small><strong><span id="points-value">0</span><span> pts</span></strong></div><div class="score-streak"><span>↗</span> <strong id="accuracy-value">—</strong><small> accuracy</small></div></div>
             <section class="level-card" aria-label="Player level and rewards">
               <div class="level-head"><span class="level-emblem" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 2.7 6.1 6.6.6-5 4.4 1.5 6.4-5.8-3.4-5.8 3.4 1.5-6.4-5-4.4 6.6-.6L12 2Z"/></svg></span><div class="level-title"><small>PLAYER LEVEL</small><strong>LV <span id="level-value">1</span><i>·</i><span id="rank-title">Rookie</span></strong></div><span class="xp-feedback" id="xp-feedback" aria-live="polite"></span></div>
