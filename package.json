@@ -1,0 +1,11 @@
+{
+  "name": "inbox-sprint",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A playful, AI-assisted Gmail cleanup game.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=20" }
+}

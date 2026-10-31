@@ -1,0 +1,37 @@
+substitutions:
+  _REGION: us-central1
+  _SERVICE: inbox-sprint
+  _OPENROUTER_MODEL: openai/gpt-4o-mini
+  _APP_BASE_URL: ""
+  _GOOGLE_REDIRECT_URI: ""
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/inbox-sprint/app:$SHORT_SHA
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/inbox-sprint/app:$SHORT_SHA
+  - name: gcr.io/google.com/cloudsdktool/google-cloud-cli:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/inbox-sprint/app:$SHORT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --service-account=inbox-sprint-runtime@$PROJECT_ID.iam.gserviceaccount.com
+      - --port=8080
+      - --memory=512Mi
+      - --cpu=1
+      - --min=0
+      - --max=1
+      - --set-env-vars=NODE_ENV=production,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,OPENROUTER_MODEL=${_OPENROUTER_MODEL},LM_STUDIO_BASE_URL=http://127.0.0.1:1234/v1,LM_STUDIO_MODEL=local-model,AI_PROVIDER=openrouter,APP_BASE_URL=${_APP_BASE_URL},GOOGLE_REDIRECT_URI=${_GOOGLE_REDIRECT_URI}
+      - --set-secrets=OPENROUTER_API_KEY=openrouter-api-key:latest,GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,SESSION_SECRET=session-secret:latest,SESSION_ENCRYPTION_KEY=session-encryption-key:latest
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/inbox-sprint/app:$SHORT_SHA

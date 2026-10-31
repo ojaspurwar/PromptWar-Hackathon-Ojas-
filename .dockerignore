@@ -1,0 +1,5 @@
+.git
+.env
+.gcloud
+node_modules
+npm-debug.log
