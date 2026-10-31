@@ -39,7 +39,52 @@ function burstConfetti() {
   const colors=['#f6ca68','#68e0bc','#a9a4ff','#ff8796','#fff'];
   for(let i=0;i<42;i++) { const piece=document.createElement('i'); piece.style.setProperty('--x',`${Math.random()*100}%`); piece.style.setProperty('--drift',`${(Math.random()-.5)*260}px`); piece.style.setProperty('--spin',`${Math.random()*720-360}deg`); piece.style.setProperty('--confetti-color',colors[i%colors.length]); piece.style.setProperty('--fall',`${900+Math.random()*900}ms`); field.append(piece); }
 }
-const state = { messages:[], analyses:{}, mode:'demo', connected:false, account:null, configured:false, started:false, cardsAnimated:false, seconds:180, timer:null, selected:null, done:new Map(), pointsById:new Map(), correctById:new Map(), history:[], score:0, correct:0, decisions:0, pending:null, provider:'openrouter', notice:null };
+const XP_PER_LEVEL = 150;
+const levelRewards = [
+  {level:1,title:'Rookie'}, {level:2,title:'Signal Scout'}, {level:3,title:'Inbox Ace'},
+  {level:4,title:'Quick Sorter'}, {level:5,title:'Noise Ninja'}, {level:6,title:'Focus Pro'},
+  {level:7,title:'Clear Skies'}, {level:8,title:'Inbox Legend'}
+];
+function readPlayerXP() { try { return Math.max(0,Number(JSON.parse(localStorage.getItem('inboxSprintPlayerXP')||'{"total":0}').total)||0); } catch { return 0; } }
+function readDailyRewardLedger() {
+  try {
+    const saved=JSON.parse(localStorage.getItem('inboxSprintDailyRewards')||'{}');
+    if(saved.day===localDateKey()) return {day:saved.day,read:Array.isArray(saved.read)?saved.read:[],actions:Array.isArray(saved.actions)?saved.actions:[]};
+  } catch {}
+  return {day:localDateKey(),read:[],actions:[]};
+}
+function playerLevel(totalXP=state.xpTotal) { return Math.floor(totalXP/XP_PER_LEVEL)+1; }
+function titleForLevel(level) { return [...levelRewards].reverse().find(reward=>level>=reward.level)?.title || 'Rookie'; }
+function renderPlayerLevel() {
+  const level=playerLevel(), inLevel=state.xpTotal%XP_PER_LEVEL, next=levelRewards.find(reward=>reward.level>level);
+  $('#level-value').textContent=String(level);
+  $('#rank-title').textContent=titleForLevel(level);
+  $('#xp-fill').style.width=`${inLevel/XP_PER_LEVEL*100}%`;
+  $('#xp-level-label').textContent=`${inLevel} / ${XP_PER_LEVEL} XP`;
+  $('#next-reward').textContent=next?`Next title: ${next.title} · Level ${next.level}`:'All titles unlocked';
+  const progress=$('#xp-progress');
+  progress.setAttribute('aria-valuenow',String(inLevel));
+  progress.setAttribute('aria-valuetext',`Level ${level}, ${inLevel} of ${XP_PER_LEVEL} XP. ${next?`Next title: ${next.title}`:'All titles unlocked'}.`);
+}
+function awardXP(category,id,amount) {
+  if(!['read','actions'].includes(category))return false;
+  const ledger=readDailyRewardLedger();
+  if(ledger[category].includes(id))return false;
+  const oldLevel=playerLevel(); ledger[category]=[...ledger[category],id].slice(-100);
+  try { localStorage.setItem('inboxSprintDailyRewards',JSON.stringify(ledger)); } catch {}
+  state.xpTotal+=amount;
+  try { localStorage.setItem('inboxSprintPlayerXP',JSON.stringify({total:state.xpTotal})); } catch {}
+  renderPlayerLevel();
+  const feedback=$('#xp-feedback'); feedback.textContent=`+${amount} XP`;
+  feedback.classList.remove('xp-pop'); void feedback.offsetWidth; feedback.classList.add('xp-pop');
+  const newLevel=playerLevel();
+  if(newLevel>oldLevel) {
+    const reward=levelRewards.find(item=>item.level===newLevel);
+    toast(reward?`Level ${newLevel}! New title unlocked: ${reward.title}.`:`Level ${newLevel} reached! Keep reading to unlock the next title.`,'success');
+  }
+  return true;
+}
+const state = { messages:[], analyses:{}, mode:'demo', connected:false, account:null, configured:false, started:false, cardsAnimated:false, seconds:180, timer:null, selected:null, done:new Map(), pointsById:new Map(), correctById:new Map(), history:[], score:0, correct:0, decisions:0, xpTotal:readPlayerXP(), pending:null, provider:'openrouter', notice:null };
 const avatarClasses = ['','violet','mint','peach','blue','gold','rose'];
 const icons = {
   archive:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6"/></svg>',
@@ -149,6 +194,7 @@ function selectMessage(id) {
   state.selected = id;
   const message = state.messages.find(m => m.id === id), analysis = state.analyses[id];
   if (!message) return;
+  if(state.started) awardXP('read',id,5);
   render();
   const subjectButton=$(`.mail-card[data-id="${CSS.escape(id)}"] .mail-subject`);
   subjectButton?.focus({preventScroll:true});
@@ -220,6 +266,7 @@ async function applyAction(message,action) {
       } catch (motionError) { console.warn('Action animation skipped:',motionError); }
     }
     const suggestion = state.analyses[message.id]?.suggestedAction;
+    awardXP('actions',message.id,10);
     const correct = action === 'keep' ? suggestion !== 'archive' : action === 'archive' ? suggestion === 'archive' : false;
     const points = action === 'keep' && suggestion === 'keep' || action === 'archive' && suggestion === 'archive' ? 10 : action === 'trash' ? 3 : 5;
     state.decisions++; if (correct) state.correct++;
@@ -316,4 +363,5 @@ window.addEventListener('keydown', e => {
 });
 
 renderStreak();
+renderPlayerLevel();
 loadInbox();
