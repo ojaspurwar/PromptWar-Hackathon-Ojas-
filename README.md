@@ -22,6 +22,8 @@ The server reads settings from environment variables; see `.env.example` for all
 - LM Studio: set `AI_PROVIDER=lmstudio`, `LM_STUDIO_BASE_URL`, and `LM_STUDIO_MODEL` to a reachable OpenAI-compatible endpoint.
 - Without a working model, sample mode uses local triage rules and displays a notice.
 
+After startup, open **AI settings** from a message review to choose an installed LM Studio model or enter a model ID. The selection is saved in that browser and applies to future reviews.
+
 For connected Gmail, the first OpenRouter triage asks permission before sending sender, subject, and message text to the configured model. This disclosure is enforced by the server as well as the UI.
 
 ## Connect Gmail
