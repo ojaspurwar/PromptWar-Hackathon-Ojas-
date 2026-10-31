@@ -28,7 +28,7 @@ Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup become
 - Check responsive layout and key keyboard interactions before handoff.
 
 ## Current Status
-- Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI provider integration (OpenRouter and LM Studio), confirmed mark-read/archive/trash actions, undo during a sprint and after reload, and a local day streak.
+- Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI provider integration (OpenRouter and LM Studio), confirmed mark-read/archive/trash actions, undo during a sprint and after reload, local day streak, and Player Level/XP progression (8 titles from Rookie to Inbox Legend).
 - Automated suite: 17 of 17 tests pass, covering endpoints, session/action lifecycle, Gmail action mapping, encryption, malformed model fallback, CSRF origin checks, local .env parsing, and OAuth URL generation.
 - Port diagnostic: Detected Steam CEF remote debugging claiming `127.0.0.1:8080`. Server now detects loopback shadows and serves across all local interfaces; accessible at `http://127.0.0.2:8080` or `http://localhost:8080` (when Steam is closed).
 - Keyboard navigation: `J`/`K` moves and focuses messages, `E` archives, `W` keeps/marks read, `T` moves to Trash, `U` undoes, and Ctrl/Cmd+Enter confirms the action dialog while plain Enter honors the focused button.
@@ -37,8 +37,9 @@ Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup become
 - Next: continue monitoring loop; execute any new commands or tests requested by the user.
 
 ## Antigravity Review Request
-Animation and OAuth pass review completed in place:
+Animation, OAuth, and XP progression review completed in place:
 - Inspected `public/app.js`, `public/styles.css`, `public/arcade.css`, `public/index.html`, and `server.js`.
+- Added Player Level HUD with XP progress, level titles, XP pop animations, and daily reward ledger to prevent farming.
 - Anime.js dynamic loader updated in `public/app.js` with graceful fallback to native Web Animations API including staggered card entrance (`options.delay * i`).
 - Server CSP updated to allow `https://esm.sh` in both `script-src` and `connect-src`.
 - Verified 3-2-1-GO countdown, `.timer-danger` pulse on final 20 seconds, action-directional exit animations, and round victory burst with celebratory confetti.
