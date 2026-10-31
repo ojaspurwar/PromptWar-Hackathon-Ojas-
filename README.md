@@ -10,7 +10,7 @@ Requires Node.js 20 or newer. The seeded sample inbox works without OAuth or mod
 npm start
 ```
 
-Open http://localhost:8080 and choose **Start your sprint**. The three-minute round shows priority, reasoning, summaries, suggested actions, progress, points, and an undo option. Completing a round updates the local day streak.
+Open http://localhost:8080 and choose **Start your sprint**. The three-minute round shows priority, reasoning, summaries, suggested actions, progress, points, and an undo option. Recent confirmed actions also appear after a reload so they can still be undone. Completing a round updates the local day streak.
 
 Keyboard shortcuts: **J/K** move between messages, **E** archives, **W** keeps, **T** moves to Trash, and **U** undoes the last action. Archive and Trash still require confirmation.
 

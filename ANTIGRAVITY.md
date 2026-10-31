@@ -21,6 +21,7 @@ Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup become
 ## Acceptance
 - A visitor can start a triage round in sample mode and view message importance, rationale, and concise summary.
 - The player can change a suggestion, confirm Keep-as-read, Archive, or Trash, see progress update, and undo where supported.
+- Recent confirmed actions remain undoable after reload while the session history is available.
 - Gmail OAuth, model unavailability, malformed model output, and Gmail API failures have user-readable handling.
 - OpenRouter credentials are server-only; LM Studio endpoint/model configuration is supported locally.
 - Keep Cloud Run compatibility in Docker/runtime configuration; deployment setup is documented separately for later.
@@ -29,6 +30,6 @@ Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup become
 ## Current Status
 - Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI scoring/provider integration (OpenRouter and LM Studio), confirmation dialogs for mark-read/archive/trash, and full undo functionality.
 - Automated test suite expanded and verified in `test/server.test.js`: 15 of 15 unit and integration tests passing, including encryption roundtrips, malformed model fallbacks, CSRF origin checks, and action lifecycles.
-- Keyboard navigation active (`J`/`K` navigation, `E` archive, `W` keep, `T` trash, `U` undo, `Enter` confirm).
+- Keyboard navigation active (`J`/`K` navigation, `E` archive, `W` keep/mark read, `T` trash, `U` undo; focused button uses Enter and Ctrl/Cmd+Enter confirms the action dialog).
 - Product work is the current priority. Cloud Run compatibility is retained; no deployment work is being done in this pass.
 - Next: Local demo and 15 automated tests verified successfully. Standing by in monitor loop for further user tasks or credential availability.

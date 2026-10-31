@@ -1,6 +1,6 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const state = { messages:[], analyses:{}, mode:'demo', connected:false, account:null, configured:false, started:false, seconds:180, timer:null, selected:null, done:new Map(), pointsById:new Map(), correctById:new Map(), score:0, correct:0, decisions:0, pending:null, provider:'openrouter', notice:null };
+const state = { messages:[], analyses:{}, mode:'demo', connected:false, account:null, configured:false, started:false, seconds:180, timer:null, selected:null, done:new Map(), pointsById:new Map(), correctById:new Map(), history:[], score:0, correct:0, decisions:0, pending:null, provider:'openrouter', notice:null };
 const avatarClasses = ['','violet','mint','peach','blue','gold','rose'];
 const icons = {
   archive:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6"/></svg>',
@@ -59,6 +59,10 @@ function render() {
   $('#total-count').textContent = state.messages.length;
   $('#done-count').textContent = state.done.size;
   $('#progress-fill').style.width = `${state.messages.length ? state.done.size / state.messages.length * 100 : 0}%`;
+  const progressTrack=$('.progress-track');
+  progressTrack.setAttribute('aria-valuemax',String(state.messages.length));
+  progressTrack.setAttribute('aria-valuenow',String(state.done.size));
+  progressTrack.setAttribute('aria-valuetext',`${state.done.size} of ${state.messages.length} messages reviewed`);
   $('#round-subtitle').textContent = `${remaining.length} unread message${remaining.length === 1 ? '' : 's'} · roughly ${Math.max(1, Math.ceil(remaining.length * .35))} min`;
   $('#mode-pill').innerHTML = `<span class="pulse-dot"></span> ${state.mode === 'gmail' ? 'Gmail connected' : 'Sample inbox'}`;
   $('#connect-label').textContent = state.connected ? 'Disconnect Gmail' : 'Connect Gmail';
@@ -68,14 +72,14 @@ function render() {
   $('#profile-avatar').textContent=accountName.trim().slice(0,1).toUpperCase()||'D';
   $('#start-label').textContent = state.messages.length && state.done.size === state.messages.length ? 'Sprint complete' : state.started ? 'Sprint in progress' : 'Start your sprint';
   $('#start-button').disabled = state.messages.length > 0 && state.done.size === state.messages.length;
-  if (!state.messages.length) { list.innerHTML = '<div class="empty-state">Your unread inbox is clear. Nice work.</div>'; renderStats(); return; }
+  if (!state.messages.length) { list.innerHTML = '<div class="empty-state">Your unread inbox is clear. Nice work.</div>'; renderStats(); renderRecentActions(); return; }
   list.innerHTML = state.messages.map((m,i) => {
     const analysis = state.analyses[m.id], done = state.done.get(m.id), priority = priorityFor(m);
     const summary = analysis?.summary || '', reason = analysis?.reason || '';
     return `<article class="mail-card ${done ? 'is-done' : ''} ${state.selected === m.id ? 'selected' : ''}" data-id="${escapeHtml(m.id)}">
       <span class="mail-avatar ${avatarClasses[i % avatarClasses.length]}">${escapeHtml(m.avatar || m.sender?.slice(0,1) || '?')}</span>
       <div class="mail-main"><div class="mail-person-row"><span class="mail-sender">${escapeHtml(m.sender)}</span><span class="mail-address">${escapeHtml(m.email || '')}</span><time class="mail-time">${escapeHtml(formatDate(m.date))}</time></div>
-      <button class="mail-subject" type="button" aria-label="Review email from ${escapeHtml(m.sender)}: ${escapeHtml(m.subject)}">${escapeHtml(m.subject)}</button><div class="mail-snippet">${escapeHtml(m.snippet || '')}</div>
+      <button class="mail-subject" type="button" aria-pressed="${state.selected === m.id}" aria-label="Review email from ${escapeHtml(m.sender)}: ${escapeHtml(m.subject)}">${escapeHtml(m.subject)}</button><div class="mail-snippet">${escapeHtml(m.snippet || '')}</div>
       <div class="mail-flags">${state.started && analysis ? `<span class="priority-tag ${priority}"><i class="small-dot"></i>${priority[0].toUpperCase()+priority.slice(1)} priority</span>` : ''}${m.important ? '<span class="type-tag">Important</span>' : ''}${done ? `<span class="type-tag">${done === 'keep' ? 'Kept' : done === 'trash' ? 'In trash' : 'Archived'}</span>` : ''}</div>
       ${state.started && analysis ? `<div class="mail-ai"><span class="mini-spark">✳</span><p>${escapeHtml(summary)}</p><small>${escapeHtml(reason)}</small></div>` : ''}</div>
       <div class="mail-actions" aria-label="Email actions">${done ? `<button class="mail-action" data-action="undo" title="Undo action" aria-label="Undo action">↶</button>` : `<button class="mail-action keep" data-action="keep" title="Keep and mark reviewed" aria-label="Keep and mark reviewed">${icons.keep}</button><button class="mail-action archive" data-action="archive" title="Archive" aria-label="Archive">${icons.archive}</button><button class="mail-action trash" data-action="trash" title="Move to trash" aria-label="Move to trash">${icons.trash}</button>`}</div>
@@ -86,6 +90,14 @@ function render() {
   });
   $$('[data-action]',list).forEach(button => button.addEventListener('click', e => { e.stopPropagation(); handleAction(button.closest('.mail-card').dataset.id,button.dataset.action); }));
   renderStats();
+  renderRecentActions();
+}
+function renderRecentActions() {
+  const panel=$('#recent-actions'), actions=state.history.filter(action=>!action.undone).slice(0,3);
+  panel.hidden=state.started||actions.length===0;
+  if(panel.hidden)return;
+  panel.innerHTML=`<div class="recent-heading"><span>RECENTLY REVIEWED</span><small>Undo stays available after reload</small></div>${actions.map(action=>`<div class="recent-row"><div><strong>${escapeHtml(action.subject||'Recently handled email')}</strong><small>${escapeHtml(action.sender||'Gmail')} · ${action.action==='keep'?'Marked read':action.action==='archive'?'Archived':'Moved to Trash'}</small></div><button type="button" data-history-undo="${escapeHtml(action.messageId)}">Undo</button></div>`).join('')}`;
+  $$('[data-history-undo]',panel).forEach(button=>button.addEventListener('click',()=>undoHistory(button.dataset.historyUndo)));
 }
 function renderStats() {
   $('#points-value').textContent = state.score;
@@ -164,20 +176,29 @@ async function applyAction(message,action) {
     state.done.set(message.id,action);
     render();
     toast(result.warning || (action === 'keep' ? 'Marked as read and kept in your inbox.' : action === 'archive' ? 'Archived. One less thing in your inbox.' : 'Moved to Trash.'),result.warning ? '' : 'success');
-    if (state.done.size === state.messages.length) { if (state.timer) clearInterval(state.timer); state.timer=null; $('#ai-status').textContent='COMPLETE'; $('#ai-summary').innerHTML='<div class="summary-placeholder"><span class="placeholder-icon">✦</span><p>Inbox reset complete. You cleared the noise and kept the signal.</p></div>'; recordCompletedSprint(); }
+    if (state.done.size === state.messages.length) { if (state.timer) clearInterval(state.timer); state.timer=null; $('#ai-status').textContent='COMPLETE'; $('#ai-summary').innerHTML='<div class="summary-placeholder"><span class="placeholder-icon">✦</span><p>Inbox reset complete. You cleared the noise and kept the signal.</p></div>'; $('#ai-summary').focus({preventScroll:true}); recordCompletedSprint(); }
     if (state.selected === message.id) { const next=state.messages.find(m=>!state.done.has(m.id)); if (next) selectMessage(next.id); }
   } catch(error) { toast(error.message,'error'); if(button) button.disabled=false; }
 }
 async function undoAction(id) {
   const action=state.done.get(id); if (!action) return;
-  try { const result=await api('/api/undo',{method:'POST',body:JSON.stringify({messageId:id})}); state.done.delete(id); state.decisions=Math.max(0,state.decisions-1); state.score=Math.max(0,state.score-(state.pointsById.get(id)||0)); if(state.correctById.get(id))state.correct=Math.max(0,state.correct-1);state.pointsById.delete(id);state.correctById.delete(id);render(); toast(result.warning || 'Action undone. Message back in your round.',result.warning ? '' : 'success'); }
+  try { const result=await api('/api/undo',{method:'POST',body:JSON.stringify({messageId:id})}); state.done.delete(id); state.decisions=Math.max(0,state.decisions-1); state.score=Math.max(0,state.score-(state.pointsById.get(id)||0)); if(state.correctById.get(id))state.correct=Math.max(0,state.correct-1);state.pointsById.delete(id);state.correctById.delete(id);state.selected=id;render();$(`.mail-card[data-id="${CSS.escape(id)}"] .mail-subject`)?.focus({preventScroll:true}); toast(result.warning || 'Action undone. Message back in your round.',result.warning ? '' : 'success'); }
   catch(error) { toast(error.message,'error'); }
+}
+async function undoHistory(id) {
+  try {
+    const result=await api('/api/undo',{method:'POST',body:JSON.stringify({messageId:id})});
+    state.history=state.history.filter(action=>action.messageId!==id);
+    toast(result.warning || 'Action undone. The email is back in your inbox.','success');
+    await loadInbox();
+    if(state.messages.some(message=>message.id===id))selectMessage(id);
+  } catch(error) { toast(error.message,'error'); }
 }
 async function loadInbox() {
   $('#mail-list').innerHTML='<div class="loading-state">Getting your inbox ready…</div>';
   try {
     const config=await api('/api/config'); state.connected=config.connected; state.account=config.account; state.configured=config.gmailConfigured; state.provider=config.providerConfig.provider;
-    const result=await api('/api/messages'); state.messages=result.messages || []; state.mode=result.mode || 'demo'; state.analyses={}; state.done.clear(); state.pointsById.clear(); state.correctById.clear(); state.started=false; state.score=0; state.correct=0; state.decisions=0; state.selected=null;
+    const result=await api('/api/messages'); const progress=await api('/api/progress'); state.history=progress.actions||[]; state.messages=result.messages || []; state.mode=result.mode || 'demo'; state.analyses={}; state.done.clear(); state.pointsById.clear(); state.correctById.clear(); state.started=false; state.score=0; state.correct=0; state.decisions=0; state.selected=null;
     if (state.timer) clearInterval(state.timer); state.timer=null; state.seconds=180; $('#timer-text').textContent='03:00'; $('#timer-progress').style.strokeDashoffset='0'; $('#timer-progress').style.stroke='#586be4'; $('#ai-status').textContent='READY';
     render();
   } catch(error) { $('#mail-list').innerHTML=`<div class="empty-state">${escapeHtml(error.message)} <button id="retry-load">Try again</button></div>`; $('#retry-load')?.addEventListener('click',loadInbox); }

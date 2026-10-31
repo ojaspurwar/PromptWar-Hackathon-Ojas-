@@ -319,7 +319,25 @@ async function route(req, res) {
     }
     const removed=await deleteSession(id); clearCookie(res); return json(res, 200, {ok:true,cleanupWarning:!removed ? 'The local session was disconnected, but saved cloud session data could not be removed. Please retry disconnect when the service is available.' : revokeWarning});
   }
-  if (req.method === 'GET' && url.pathname === '/api/progress') return json(res,200,{actions:session.actions || []});
+  if (req.method === 'GET' && url.pathname === '/api/progress') {
+    const actions=(session.actions || []).filter(action=>!action.undone).slice(-5).reverse();
+    if (!session.tokens) {
+      return json(res,200,{actions:actions.map(action=>{
+        const message=DEMO_MESSAGES.find(item=>item.id===action.messageId);
+        return {...action,subject:message?.subject || 'Sample email',sender:message?.sender || 'Sample inbox'};
+      })});
+    }
+    const enriched=await Promise.all(actions.map(async action=>{
+      try {
+        const result=await gmailFetch(session.tokens,`messages/${encodeURIComponent(action.messageId)}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`);
+        session.tokens=result.tokens;
+        const message=normalizeEmail(result.data,0);
+        return {...action,subject:message.subject,sender:message.sender};
+      } catch { return {...action,subject:'Recently handled email',sender:'Gmail'}; }
+    }));
+    try { await saveSession(id,session); } catch(e) { console.error('Progress token refresh:',e.message); }
+    return json(res,200,{actions:enriched});
+  }
   if (req.method !== 'GET' && url.pathname.startsWith('/api/')) return json(res,404,{error:'API route not found.'});
   let file;
   try {

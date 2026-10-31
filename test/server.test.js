@@ -116,17 +116,22 @@ test('POST /api/action keeps a message available and records an undoable review'
   const actionRes = await fetch(`${baseUrl}/api/action`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ messageId: 'keep-1', action: 'keep' })
+    body: JSON.stringify({ messageId: 'm1', action: 'keep' })
   });
   assert.equal(actionRes.status, 200);
   assert.equal((await actionRes.json()).action.action, 'keep');
   const cookie = actionRes.headers.get('set-cookie');
+  const progressRes = await fetch(`${baseUrl}/api/progress`, { headers:{cookie} });
+  const progressData = await progressRes.json();
+  assert.equal(progressData.actions[0].subject, 'Updated launch timeline — decision needed today');
   const undoRes = await fetch(`${baseUrl}/api/undo`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', cookie },
-    body: JSON.stringify({ messageId: 'keep-1' })
+    body: JSON.stringify({ messageId: 'm1' })
   });
   assert.equal(undoRes.status, 200);
+  const progressAfterUndo = await fetch(`${baseUrl}/api/progress`, { headers:{cookie} });
+  assert.equal((await progressAfterUndo.json()).actions.length, 0);
 });
 
 test('Origin checking rejects cross-site mutations', async () => {
@@ -210,8 +215,10 @@ test('Unit: malformed model output falls back to local triage', async () => {
   const oldKey = process.env.OPENROUTER_API_KEY;
   const oldProvider = process.env.AI_PROVIDER;
   const oldFetch = global.fetch;
+  const oldWarn = console.warn;
   process.env.OPENROUTER_API_KEY = 'test-only-key';
   process.env.AI_PROVIDER = 'openrouter';
+  console.warn = () => {};
   global.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: '```json\n{broken\n```' } }] }), { status: 200 });
   try {
     const result = await modelTriage([{ id: 'urgent-1', subject: 'Urgent contract approval', snippet: 'Decision needed today' }], {});
@@ -220,6 +227,7 @@ test('Unit: malformed model output falls back to local triage', async () => {
     assert.match(result.notice, /could not analyze/i);
   } finally {
     global.fetch = oldFetch;
+    console.warn = oldWarn;
     if (oldKey === undefined) delete process.env.OPENROUTER_API_KEY;
     else process.env.OPENROUTER_API_KEY = oldKey;
     if (oldProvider === undefined) delete process.env.AI_PROVIDER;
