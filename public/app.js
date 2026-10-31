@@ -80,7 +80,8 @@ function awardXP(category,id,amount) {
   const newLevel=playerLevel();
   if(newLevel>oldLevel) {
     const reward=levelRewards.find(item=>item.level===newLevel);
-    toast(reward?`Level ${newLevel}! New title unlocked: ${reward.title}.`:`Level ${newLevel} reached! Keep reading to unlock the next title.`,'success');
+    const next=levelRewards.find(item=>item.level>newLevel);
+    toast(reward?`Level ${newLevel}! New title unlocked: ${reward.title}.`:next?`Level ${newLevel} reached! Keep going for ${next.title}.`:`Level ${newLevel} reached! All titles unlocked.`,'success');
   }
   return true;
 }

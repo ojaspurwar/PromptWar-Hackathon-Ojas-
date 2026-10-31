@@ -10,7 +10,7 @@ Requires Node.js 20 or newer. The seeded sample inbox works without OAuth or mod
 npm start
 ```
 
-Open http://localhost:8080 and choose **Start your sprint**. The three-minute round shows priority, reasoning, summaries, suggested actions, progress, points, and an undo option. Recent confirmed actions also appear after a reload so they can still be undone. Completing a round updates the local day streak.
+Open http://localhost:8080 and choose **Start your sprint**. The three-minute round shows priority, reasoning, summaries, suggested actions, progress, points, and an undo option. Read a new message in the round for 5 XP and confirm an action for 10 XP; titles unlock as your level rises. XP and titles persist in that browser, and reading/action XP is awarded once per message per local day. Recent confirmed actions also appear after a reload so they can still be undone. Completing a round updates the local day streak.
 
 Keyboard shortcuts: **J/K** move between messages, **E** archives, **W** keeps, **T** moves to Trash, and **U** undoes the last action. Archive and Trash still require confirmation.
 
