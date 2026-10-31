@@ -28,8 +28,9 @@ Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup become
 - Check responsive layout and key keyboard interactions before handoff.
 
 ## Current Status
-- Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI scoring/provider integration (OpenRouter and LM Studio), confirmation dialogs for mark-read/archive/trash, and full undo functionality.
-- Automated test suite expanded and verified in `test/server.test.js`: 15 of 15 unit and integration tests passing, including encryption roundtrips, malformed model fallbacks, CSRF origin checks, and action lifecycles.
-- Keyboard navigation active (`J`/`K` navigation, `E` archive, `W` keep/mark read, `T` trash, `U` undo; focused button uses Enter and Ctrl/Cmd+Enter confirms the action dialog).
-- Product work is the current priority. Cloud Run compatibility is retained; no deployment work is being done in this pass.
-- Next: Local demo and 15 automated tests verified successfully. Standing by in monitor loop for further user tasks or credential availability.
+- Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI provider integration (OpenRouter and LM Studio), confirmed mark-read/archive/trash actions, undo during a sprint and after reload, and a local day streak.
+- Automated suite: 15 of 15 tests pass, covering endpoints, session/action lifecycle, Gmail action mapping, encryption, malformed model fallback, and CSRF origin checks.
+- Keyboard navigation: `J`/`K` moves and focuses messages, `E` archives, `W` keeps/marks read, `T` moves to Trash, `U` undoes, and Ctrl/Cmd+Enter confirms the action dialog while plain Enter honors the focused button.
+- Latest local HTTP smoke check passed for health, sample inbox, fallback triage, action history, undo, static assets, and security headers.
+- Cloud Run compatibility is retained; deployment work is deferred per user direction. No browser surface was available for visual interaction testing, so responsive styles and DOM references were checked statically.
+- Next: continue product work only if requested; do not start deployment in this pass.
