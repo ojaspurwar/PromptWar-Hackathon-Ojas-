@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Inbox Sprint Launch Video</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Press+Start+2P&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --cyan: #00d2ff;
+        --green: #00ff88;
+        --pink: #ff2a85;
+        --amber: #ffd000;
+        --purple: #9d4edd;
+        --dark-bg: #060910;
+        --card-bg: #0d1420;
+        --border: rgba(0, 210, 255, 0.28);
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html, body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--dark-bg);
+        font-family: 'Space Mono', monospace;
+        color: #f0f6fc;
+        user-select: none;
+      }
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 20%, #101c30 0%, #060910 80%);
+      }
+
+      /* Cyber grid background */
+      .grid-floor {
+        position: absolute;
+        inset: 0;
+        background-image: 
+          linear-gradient(rgba(0, 210, 255, 0.12) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 210, 255, 0.12) 1px, transparent 1px);
+        background-size: 60px 60px;
+        background-position: center center;
+        perspective: 600px;
+        transform-origin: 50% 100%;
+        opacity: 0.65;
+      }
+      .grid-glow {
+        position: absolute;
+        top: -10%;
+        left: 20%;
+        width: 60%;
+        height: 50%;
+        background: radial-gradient(ellipse at center, rgba(0, 210, 255, 0.18) 0%, rgba(255, 42, 133, 0.08) 45%, transparent 70%);
+        filter: blur(40px);
+        pointer-events: none;
+      }
+
+      /* CRT Scanlines and Vignette */
+      .scanlines {
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.22) 0px,
+          rgba(0, 0, 0, 0.22) 1px,
+          transparent 2px,
+          transparent 4px
+        );
+        pointer-events: none;
+        z-index: 99;
+      }
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at center, transparent 55%, rgba(0,0,0,0.85) 100%);
+        box-shadow: inset 0 0 100px rgba(0, 210, 255, 0.15);
+        pointer-events: none;
+        z-index: 100;
+      }
+
+      /* Top Arcade Bar */
+      .arcade-ticker {
+        position: absolute;
+        top: 24px;
+        left: 48px;
+        right: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        background: rgba(13, 20, 32, 0.75);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        backdrop-filter: blur(10px);
+        font-family: 'Press Start 2P', monospace;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        z-index: 20;
+      }
+      .ticker-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        color: var(--cyan);
+      }
+      .ticker-right {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        color: var(--amber);
+      }
+      .live-dot {
+        width: 10px;
+        height: 10px;
+        background: var(--green);
+        border-radius: 50%;
+        box-shadow: 0 0 12px var(--green);
+        animation: blink 0.8s infinite alternate;
+      }
+      @keyframes blink { from { opacity: 0.4; } to { opacity: 1; } }
+
+      /* ==================== SCENE 1: HOOK / TITLE ==================== */
+      #scene-1 {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        z-index: 10;
+      }
+      .badge-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 18px;
+        background: rgba(0, 210, 255, 0.12);
+        border: 1px solid var(--cyan);
+        border-radius: 999px;
+        color: var(--cyan);
+        font-family: 'Press Start 2P', monospace;
+        font-size: 11px;
+        margin-bottom: 24px;
+        text-transform: uppercase;
+        box-shadow: 0 0 20px rgba(0, 210, 255, 0.25);
+      }
+      .title-huge {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 82px;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        color: #ffffff;
+        text-shadow: 
+          0 0 20px rgba(0, 210, 255, 0.8),
+          0 0 45px rgba(0, 210, 255, 0.4),
+          4px 4px 0px var(--pink);
+        margin-bottom: 24px;
+        line-height: 1.1;
+      }
+      .subtitle-lead {
+        font-family: 'Inter', sans-serif;
+        font-size: 26px;
+        font-weight: 600;
+        color: #9cb3c9;
+        max-width: 900px;
+        line-height: 1.5;
+        margin-bottom: 38px;
+      }
+      .subtitle-lead b {
+        color: #ffffff;
+        font-weight: 700;
+      }
+      .insert-coin {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 15px;
+        color: var(--amber);
+        text-shadow: 0 0 16px rgba(255, 208, 0, 0.7);
+        padding: 14px 28px;
+        border: 2px dashed var(--amber);
+        background: rgba(255, 208, 0, 0.08);
+        border-radius: 8px;
+      }
+
+      /* ==================== SCENE 2: GAMEPLAY SPEEDRUN ==================== */
+      #scene-2 {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 90px 48px 48px;
+        gap: 36px;
+        z-index: 10;
+        opacity: 0;
+      }
+      .gameplay-layout {
+        display: grid;
+        grid-template-columns: 400px 1fr;
+        gap: 32px;
+        width: 100%;
+        max-width: 1800px;
+        height: 860px;
+        align-items: center;
+      }
+      .game-hud-col {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .timer-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-shadow: 0 12px 35px rgba(0,0,0,0.5);
+      }
+      .timer-circle {
+        position: relative;
+        width: 180px;
+        height: 180px;
+      }
+      .timer-circle svg {
+        width: 180px;
+        height: 180px;
+        transform: rotate(-90deg);
+      }
+      .timer-circle circle {
+        fill: none;
+        stroke-width: 10;
+      }
+      .timer-bg {
+        stroke: rgba(255, 255, 255, 0.08);
+      }
+      .timer-bar {
+        stroke: var(--cyan);
+        stroke-dasharray: 502;
+        stroke-dashoffset: 80;
+        stroke-linecap: round;
+        filter: drop-shadow(0 0 12px var(--cyan));
+      }
+      .timer-text {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Press Start 2P', monospace;
+      }
+      .timer-val {
+        font-size: 28px;
+        color: #ffffff;
+        text-shadow: 0 0 15px var(--cyan);
+      }
+      .timer-sub {
+        font-size: 8px;
+        color: #7a92a5;
+        margin-top: 6px;
+      }
+      .hud-stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .hud-stat-box {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+      }
+      .hud-stat-box small {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 8px;
+        color: #7b94a8;
+        display: block;
+        margin-bottom: 8px;
+      }
+      .hud-stat-box strong {
+        font-family: 'Space Mono', monospace;
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--green);
+        text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+      }
+      .hud-stat-box strong.amber {
+        color: var(--amber);
+        text-shadow: 0 0 10px rgba(255, 208, 0, 0.4);
+      }
+      .keys-banner {
+        background: rgba(0, 210, 255, 0.08);
+        border: 1px solid var(--cyan);
+        border-radius: 8px;
+        padding: 16px;
+      }
+      .keys-banner h4 {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 9px;
+        color: var(--cyan);
+        margin-bottom: 12px;
+      }
+      .key-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        margin-bottom: 6px;
+        color: #c0d3e2;
+      }
+      .key-kbd {
+        background: #111a26;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-family: 'Press Start 2P', monospace;
+        font-size: 9px;
+        color: #fff;
+      }
+
+      /* Game screenshot frame */
+      .game-screen-frame {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid var(--border);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(0, 210, 255, 0.2);
+        background: #0b1018;
+      }
+      .game-screen-frame img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top center;
+      }
+      .floating-callout {
+        position: absolute;
+        background: rgba(13, 20, 32, 0.95);
+        border: 1px solid var(--cyan);
+        box-shadow: 0 12px 30px rgba(0, 210, 255, 0.3);
+        border-radius: 8px;
+        padding: 14px 20px;
+        font-family: 'Press Start 2P', monospace;
+        font-size: 11px;
+        color: #fff;
+        z-index: 25;
+        backdrop-filter: blur(10px);
+      }
+      .floating-callout.pop-1 {
+        top: 25%;
+        right: 8%;
+        border-color: var(--green);
+        color: var(--green);
+      }
+      .floating-callout.pop-2 {
+        bottom: 20%;
+        left: 25%;
+        border-color: var(--amber);
+        color: var(--amber);
+      }
+
+      /* ==================== SCENE 3: LOCAL AI CO-PILOT ==================== */
+      #scene-3 {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 90px 80px 48px;
+        gap: 60px;
+        z-index: 10;
+        opacity: 0;
+      }
+      .ai-hero-card {
+        flex: 1;
+        background: var(--card-bg);
+        border: 2px solid var(--border);
+        border-radius: 14px;
+        padding: 36px;
+        box-shadow: 0 25px 70px rgba(0,0,0,0.8), 0 0 45px rgba(0, 210, 255, 0.2);
+        position: relative;
+        overflow: hidden;
+      }
+      .ai-laser {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+        box-shadow: 0 0 18px var(--cyan);
+      }
+      .ai-badge-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .ai-pill-lan {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: rgba(0, 255, 136, 0.15);
+        border: 1px solid var(--green);
+        border-radius: 999px;
+        color: var(--green);
+        font-family: 'Press Start 2P', monospace;
+        font-size: 9px;
+      }
+      .ai-title {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 16px;
+        color: #ffffff;
+      }
+      .ai-data-block {
+        background: #080d14;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      .ai-data-block small {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 8px;
+        color: var(--cyan);
+        display: block;
+        margin-bottom: 8px;
+      }
+      .ai-data-block p {
+        font-size: 15px;
+        line-height: 1.6;
+        color: #d8e5ef;
+      }
+      .ai-decision-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 18px;
+        background: linear-gradient(90deg, rgba(0, 210, 255, 0.15), rgba(0, 255, 136, 0.1));
+        border: 1px solid var(--cyan);
+        border-radius: 8px;
+      }
+      .ai-decision-row .star-icon {
+        font-size: 28px;
+        color: var(--cyan);
+      }
+      .ai-side-info {
+        width: 520px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .ai-feature-box {
+        background: rgba(13, 20, 32, 0.85);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 24px;
+      }
+      .ai-feature-box h3 {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 12px;
+        color: var(--cyan);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .ai-feature-box p {
+        font-family: 'Inter', sans-serif;
+        font-size: 15px;
+        line-height: 1.6;
+        color: #a4b9cb;
+      }
+
+      /* ==================== SCENE 4: LEVEL UP & CELEBRATION ==================== */
+      #scene-4 {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        z-index: 10;
+        opacity: 0;
+      }
+      .level-up-banner {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 18px;
+        color: var(--amber);
+        padding: 10px 24px;
+        background: rgba(255, 208, 0, 0.15);
+        border: 2px solid var(--amber);
+        border-radius: 999px;
+        box-shadow: 0 0 35px rgba(255, 208, 0, 0.4);
+        margin-bottom: 30px;
+        text-transform: uppercase;
+      }
+      .victory-title {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 64px;
+        font-weight: 900;
+        color: #ffffff;
+        text-shadow: 
+          0 0 25px rgba(0, 255, 136, 0.8),
+          0 0 50px rgba(0, 255, 136, 0.4),
+          4px 4px 0px #047857;
+        margin-bottom: 20px;
+      }
+      .xp-progress-wrap {
+        width: 650px;
+        height: 28px;
+        background: #0b1018;
+        border: 2px solid var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+        margin: 0 auto 36px;
+        padding: 3px;
+        box-shadow: 0 0 25px rgba(0, 210, 255, 0.25);
+      }
+      .xp-progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, var(--cyan), var(--green));
+        border-radius: 999px;
+        box-shadow: 0 0 15px var(--green);
+      }
+      .victory-stats-row {
+        display: flex;
+        gap: 30px;
+        justify-content: center;
+        margin-bottom: 30px;
+      }
+      .victory-stat-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 20px 32px;
+        min-width: 200px;
+      }
+      .victory-stat-card small {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 9px;
+        color: #7b94a8;
+        display: block;
+        margin-bottom: 8px;
+      }
+      .victory-stat-card strong {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 24px;
+        color: var(--cyan);
+        text-shadow: 0 0 12px var(--cyan);
+      }
+
+      /* Confetti pieces */
+      .confetti-container {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .confetti {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        opacity: 0.85;
+      }
+
+      /* ==================== SCENE 5: TECH & CTA ==================== */
+      #scene-5 {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        z-index: 10;
+        opacity: 0;
+      }
+      .tech-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        max-width: 1100px;
+        margin-bottom: 40px;
+      }
+      .tech-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 20px;
+        text-align: left;
+      }
+      .tech-card strong {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 10px;
+        color: var(--cyan);
+        display: block;
+        margin-bottom: 8px;
+      }
+      .tech-card p {
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        color: #b5c7d8;
+      }
+      .github-hero-card {
+        background: linear-gradient(135deg, rgba(13, 20, 32, 0.95), rgba(16, 32, 54, 0.95));
+        border: 2px solid var(--cyan);
+        border-radius: 16px;
+        padding: 32px 50px;
+        box-shadow: 0 20px 60px rgba(0, 210, 255, 0.3);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .github-hero-card .repo-url {
+        font-family: 'Space Mono', monospace;
+        font-size: 22px;
+        font-weight: 700;
+        color: #ffffff;
+        margin-bottom: 18px;
+        letter-spacing: -0.02em;
+      }
+      .github-hero-card .repo-url span {
+        color: var(--cyan);
+      }
+      .star-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 32px;
+        background: var(--amber);
+        color: #000000;
+        font-family: 'Press Start 2P', monospace;
+        font-size: 12px;
+        font-weight: 900;
+        border-radius: 8px;
+        box-shadow: 0 0 25px rgba(255, 208, 0, 0.6);
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div class="grid-floor"></div>
+      <div class="grid-glow"></div>
+      <div class="scanlines"></div>
+      <div class="vignette"></div>
+
+      <!-- Top Arcade Ticker -->
+      <div class="arcade-ticker">
+        <div class="ticker-left">
+          <span class="live-dot"></span>
+          <span>INBOX SPRINT // LIVE ARCADE</span>
+        </div>
+        <div class="ticker-right">
+          <span>HIGH SCORE: 380</span>
+          <span>MODEL: NEMOTRON-3-NANO</span>
+          <span>STREAK: 5 DAYS</span>
+        </div>
+      </div>
+
+      <!-- ================= SCENE 1: HOOK / TITLE (0s - 5s) ================= -->
+      <div id="scene-1" class="clip" data-start="0" data-duration="5.2">
+        <div class="badge-pill">⚡ RETRO ARCADE EMAIL TRIAGE ⚡</div>
+        <h1 class="title-huge">INBOX SPRINT</h1>
+        <p class="subtitle-lead">
+          Stop treating email like an administrative nightmare.<br>
+          <b>3 Minutes on the clock.</b> Powered by a <b>local AI co-pilot</b>. High-score speedrun to <b>Inbox Zero</b>.
+        </p>
+        <div class="insert-coin">[ PRESS SPACE TO TRIAGE ]</div>
+      </div>
+
+      <!-- ================= SCENE 2: GAMEPLAY SPEEDRUN (5s - 11s) ================= -->
+      <div id="scene-2" class="clip" data-start="4.8" data-duration="6.4">
+        <div class="gameplay-layout">
+          <div class="game-hud-col">
+            <div class="timer-card">
+              <div class="timer-circle">
+                <svg>
+                  <circle class="timer-bg" cx="90" cy="90" r="80"></circle>
+                  <circle class="timer-bar" cx="90" cy="90" r="80"></circle>
+                </svg>
+                <div class="timer-text">
+                  <span class="timer-val" id="timer-number">2:45</span>
+                  <span class="timer-sub">TIME REMAINING</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="hud-stats-grid">
+              <div class="hud-stat-box">
+                <small>SCORE</small>
+                <strong id="live-score">140</strong>
+              </div>
+              <div class="hud-stat-box">
+                <small>STREAK</small>
+                <strong class="amber">🔥 5 DAYS</strong>
+              </div>
+            </div>
+
+            <div class="keys-banner">
+              <h4>ARCADE CONTROLS</h4>
+              <div class="key-row"><span>Next / Prev Email</span><span><kbd class="key-kbd">J</kbd> <kbd class="key-kbd">K</kbd></span></div>
+              <div class="key-row"><span>Keep & Mark Read</span><span><kbd class="key-kbd">W</kbd></span></div>
+              <div class="key-row"><span>Archive to Zero</span><span><kbd class="key-kbd">E</kbd></span></div>
+              <div class="key-row"><span>Move to Trash</span><span><kbd class="key-kbd">T</kbd></span></div>
+              <div class="key-row"><span>Instant Undo</span><span><kbd class="key-kbd">U</kbd></span></div>
+            </div>
+          </div>
+
+          <div class="game-screen-frame">
+            <img src="./assets/shot-gameplay.png" alt="Inbox Sprint Gameplay Screenshot">
+            <div class="floating-callout pop-1">★ +10 PTS · ARCHIVED!</div>
+            <div class="floating-callout pop-2">⚡ 3X COMBO MULTIPLIER</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= SCENE 3: LOCAL AI CO-PILOT (11s - 17s) ================= -->
+      <div id="scene-3" class="clip" data-start="10.8" data-duration="6.4">
+        <div class="ai-hero-card">
+          <div class="ai-laser"></div>
+          <div class="ai-badge-row">
+            <div class="ai-title">LIVE MESSAGE INTEL // CO-PILOT</div>
+            <div class="ai-pill-lan">● LM STUDIO (LOCAL LAN)</div>
+          </div>
+          <div class="ai-data-block">
+            <small>MODEL ACTIVE</small>
+            <p><strong>nvidia/nemotron-3-nano-4b</strong> · 100% Private on Local Machine</p>
+          </div>
+          <div class="ai-data-block">
+            <small>MESSAGE SUMMARY</small>
+            <p>"Critical contract signoff required for Q4 deployment. Waiting on your approval by 5:00 PM."</p>
+          </div>
+          <div class="ai-data-block">
+            <small>WHY IT MATTERS</small>
+            <p>High impact client deliverable. Revenue milestone dependent on legal signoff.</p>
+          </div>
+          <div class="ai-decision-row">
+            <span class="star-icon">✳</span>
+            <div>
+              <small style="font-family:'Press Start 2P',monospace; font-size:8px; color:var(--cyan); display:block; margin-bottom:4px;">RECOMMENDED ACTION</small>
+              <strong style="font-size:16px; color:#fff;">KEEP IN INBOX · HIGH PRIORITY</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="ai-side-info">
+          <div class="ai-feature-box">
+            <h3>🔒 ZERO CLOUD LEAKS</h3>
+            <p>Emails never leave your machine when running LM Studio. Everything is analyzed locally via OpenAI-compatible API on LAN.</p>
+          </div>
+          <div class="ai-feature-box">
+            <h3>⚡ REAL-TIME DISCOVERY</h3>
+            <p>Dynamic in-browser model picker queries your local LM Studio instance and lets you switch models with 1-click persistence.</p>
+          </div>
+          <div class="ai-feature-box">
+            <h3>🛡️ REVERSIBLE SAFETY</h3>
+            <p>Every decision stays undoable even across browser reloads. You stay in 100% control of every email action.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= SCENE 4: LEVEL UP & CELEBRATION (17s - 21s) ================= -->
+      <div id="scene-4" class="clip" data-start="16.8" data-duration="4.4">
+        <div class="confetti-container" id="confetti-box"></div>
+        <div class="level-up-banner">⭐ LEVEL UP! PROMOTED ⭐</div>
+        <h2 class="victory-title">ROUND CLEARED!</h2>
+        <div class="xp-progress-wrap">
+          <div class="xp-progress-fill" id="xp-fill"></div>
+        </div>
+        <div class="victory-stats-row">
+          <div class="victory-stat-card">
+            <small>FINAL SCORE</small>
+            <strong>380 PTS</strong>
+          </div>
+          <div class="victory-stat-card">
+            <small>ACCURACY</small>
+            <strong style="color:var(--green)">100%</strong>
+          </div>
+          <div class="victory-stat-card">
+            <small>NEW RANK</small>
+            <strong style="color:var(--amber)">INBOX CADET</strong>
+          </div>
+        </div>
+        <p style="font-family:'Press Start 2P',monospace; font-size:13px; color:#9cb3c9;">INBOX ZERO ACHIEVED IN 2:18</p>
+      </div>
+
+      <!-- ================= SCENE 5: TECH & CTA (21s - 24s) ================= -->
+      <div id="scene-5" class="clip" data-start="20.8" data-duration="3.2">
+        <h2 style="font-family:'Press Start 2P',monospace; font-size:28px; color:#fff; margin-bottom:28px; text-shadow:0 0 20px var(--cyan);">BUILT FOR SPEED & CRAFT</h2>
+        <div class="tech-grid">
+          <div class="tech-card">
+            <strong>ZERO NPM RUNTIME DEPS</strong>
+            <p>100% pure Node.js standard library. Fast, lightweight, zero bloat.</p>
+          </div>
+          <div class="tech-card">
+            <strong>20/20 PASSING TESTS</strong>
+            <p>Complete test suite covering CSRF, sessions, encryption, OAuth, and LM Studio.</p>
+          </div>
+          <div class="tech-card">
+            <strong>PRIVACY FIRST</strong>
+            <p>Support for local LM Studio LAN endpoints and OpenRouter cloud AI.</p>
+          </div>
+        </div>
+        <div class="github-hero-card">
+          <div class="repo-url">github.com/ojaspurwar/<span>PromptWar-Hackathon-Ojas-</span></div>
+          <div class="star-button">⭐ STAR ON GITHUB · CLONE & RUN IN 60s</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Populate confetti
+      const confettiBox = document.getElementById('confetti-box');
+      const colors = ['#00d2ff', '#00ff88', '#ff2a85', '#ffd000', '#ffffff'];
+      for (let i = 0; i < 70; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        c.style.left = Math.random() * 100 + '%';
+        c.style.top = -20 + 'px';
+        c.style.transform = 'rotate(' + Math.random() * 360 + 'deg)';
+        confettiBox.appendChild(c);
+      }
+
+      const tl = gsap.timeline({ paused: true });
+
+      // ================= SCENE 1 ANIMATIONS (0 - 5s) =================
+      tl.fromTo("#scene-1 .badge-pill", { opacity: 0, scale: 0.8, y: -20 }, { opacity: 1, scale: 1, y: 0, duration: 0.6, ease: "back.out(1.7)" }, 0.2);
+      tl.fromTo("#scene-1 .title-huge", { opacity: 0, scale: 0.85, filter: "blur(12px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.8, ease: "power3.out" }, 0.5);
+      tl.fromTo("#scene-1 .subtitle-lead", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 1.0);
+      tl.fromTo("#scene-1 .insert-coin", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.5, ease: "bounce.out" }, 1.5);
+      tl.to("#scene-1 .insert-coin", { opacity: 0.25, repeat: 5, yoyo: true, duration: 0.4 }, 2.0);
+      tl.to("#scene-1", { opacity: 0, scale: 1.05, filter: "blur(8px)", duration: 0.45, ease: "power2.in" }, 4.7);
+
+      // ================= SCENE 2 ANIMATIONS (5s - 11s) =================
+      tl.fromTo("#scene-2", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 4.9);
+      tl.fromTo(".gameplay-layout", { opacity: 0, scale: 0.92, y: 40 }, { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: "power3.out" }, 5.0);
+      tl.fromTo(".timer-bar", { strokeDashoffset: 502 }, { strokeDashoffset: 140, duration: 5.5, ease: "linear" }, 5.0);
+      tl.fromTo(".floating-callout.pop-1", { opacity: 0, scale: 0.5, x: 50 }, { opacity: 1, scale: 1, x: 0, duration: 0.5, ease: "back.out(2)" }, 6.2);
+      tl.fromTo(".floating-callout.pop-2", { opacity: 0, scale: 0.5, x: -50 }, { opacity: 1, scale: 1, x: 0, duration: 0.5, ease: "back.out(2)" }, 7.4);
+      tl.to("#live-score", { innerText: 260, roundProps: "innerText", duration: 3.5, ease: "power1.out" }, 6.0);
+      tl.to("#scene-2", { opacity: 0, scale: 0.96, filter: "blur(6px)", duration: 0.45, ease: "power2.in" }, 10.7);
+
+      // ================= SCENE 3 ANIMATIONS (11s - 17s) =================
+      tl.fromTo("#scene-3", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 10.9);
+      tl.fromTo(".ai-hero-card", { opacity: 0, x: -60 }, { opacity: 1, x: 0, duration: 0.7, ease: "power3.out" }, 11.0);
+      tl.fromTo(".ai-side-info .ai-feature-box", { opacity: 0, x: 50 }, { opacity: 1, x: 0, duration: 0.5, stagger: 0.2, ease: "power2.out" }, 11.4);
+      tl.fromTo(".ai-laser", { top: "0%" }, { top: "100%", duration: 2.2, repeat: 2, ease: "power1.inOut" }, 11.5);
+      tl.fromTo(".ai-decision-row", { scale: 0.95, boxShadow: "0 0 0px var(--cyan)" }, { scale: 1.02, boxShadow: "0 0 30px var(--cyan)", duration: 0.5, repeat: 3, yoyo: true }, 13.5);
+      tl.to("#scene-3", { opacity: 0, scale: 0.96, filter: "blur(6px)", duration: 0.45, ease: "power2.in" }, 16.7);
+
+      // ================= SCENE 4 ANIMATIONS (17s - 21s) =================
+      tl.fromTo("#scene-4", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 16.9);
+      tl.fromTo(".level-up-banner", { opacity: 0, scale: 0.5, y: -30 }, { opacity: 1, scale: 1, y: 0, duration: 0.6, ease: "back.out(2)" }, 17.0);
+      tl.fromTo(".victory-title", { opacity: 0, scale: 1.3, filter: "blur(10px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.6, ease: "power4.out" }, 17.3);
+      tl.to("#xp-fill", { width: "100%", duration: 1.8, ease: "power2.out" }, 17.6);
+      tl.fromTo(".victory-stat-card", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.15, ease: "back.out(1.5)" }, 18.0);
+      // Confetti fall
+      tl.to(".confetti", {
+        y: 1150,
+        x: () => (Math.random() - 0.5) * 300,
+        rotation: () => Math.random() * 720,
+        duration: 2.8,
+        stagger: 0.02,
+        ease: "power1.in"
+      }, 17.4);
+      tl.to("#scene-4", { opacity: 0, scale: 0.95, duration: 0.45, ease: "power2.in" }, 20.7);
+
+      // ================= SCENE 5 ANIMATIONS (21s - 24s) =================
+      tl.fromTo("#scene-5", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 20.9);
+      tl.fromTo("#scene-5 h2", { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 21.0);
+      tl.fromTo(".tech-card", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.1, ease: "power2.out" }, 21.2);
+      tl.fromTo(".github-hero-card", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.8)" }, 21.6);
+      tl.fromTo(".star-button", { scale: 1 }, { scale: 1.08, boxShadow: "0 0 45px rgba(255, 208, 0, 0.9)", duration: 0.4, repeat: 4, yoyo: true }, 22.0);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
