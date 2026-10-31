@@ -142,8 +142,13 @@ function readBody(req) {
 }
 function gmailReady() { return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET); }
 function providerConfig() {
-  return { provider: process.env.AI_PROVIDER || 'openrouter', openrouterReady: Boolean(process.env.OPENROUTER_API_KEY), lmStudioBaseUrl: process.env.LM_STUDIO_BASE_URL || 'http://127.0.0.1:1234/v1', lmStudioModel: process.env.LM_STUDIO_MODEL || 'local-model', openrouterModel: process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini' };
+  const provider=process.env.AI_PROVIDER || 'openrouter';
+  const lmStudioBaseUrl=process.env.LM_STUDIO_BASE_URL || 'http://127.0.0.1:1234/v1';
+  const lmStudioModel=process.env.LM_STUDIO_MODEL || 'local-model';
+  const openrouterModel=process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
+  return { provider, openrouterReady: Boolean(process.env.OPENROUTER_API_KEY), lmStudioBaseUrl, lmStudioModel, openrouterModel, model:provider==='lmstudio'?lmStudioModel:openrouterModel };
 }
+function validModelId(value) { return typeof value==='string' && value.length>0 && value.length<=180 && /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(value); }
 async function refreshIfNeeded(tokens) {
   if (!tokens?.access_token || (tokens.expiry_date && tokens.expiry_date > Date.now() + 60_000)) return tokens;
   if (!tokens.refresh_token) throw new Error('Gmail session expired. Please reconnect your account.');
@@ -205,10 +210,10 @@ const fallbackTriage = (messages) => Object.fromEntries(messages.map(m => {
   return [m.id, { importance:high ? 'high' : 'low', score:high ? 0.9 : 0.28, summary:(m.snippet || m.body || '').slice(0,150), reason:high ? 'Contains a deadline, decision, or customer impact.' : 'Routine update or newsletter; no immediate action found.', suggestedAction:high ? 'keep' : 'archive' }];
 }));
 async function modelTriage(messages, config) {
-  const provider = process.env.AI_PROVIDER || 'openrouter';
+  const provider = config?.provider || process.env.AI_PROVIDER || 'openrouter';
   const apiKey = provider === 'lmstudio' ? (process.env.LM_STUDIO_API_KEY || 'local') : process.env.OPENROUTER_API_KEY;
-  const base = provider === 'lmstudio' ? (process.env.LM_STUDIO_BASE_URL || 'http://127.0.0.1:1234/v1') : 'https://openrouter.ai/api/v1';
-  const model = provider === 'lmstudio' ? (process.env.LM_STUDIO_MODEL || 'local-model') : (process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini');
+  const base = provider === 'lmstudio' ? (config?.lmStudioBaseUrl || process.env.LM_STUDIO_BASE_URL || 'http://127.0.0.1:1234/v1') : 'https://openrouter.ai/api/v1';
+  const model = config?.model || (provider === 'lmstudio' ? (process.env.LM_STUDIO_MODEL || 'local-model') : (process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini'));
   if (!apiKey || (provider !== 'lmstudio' && !process.env.OPENROUTER_API_KEY)) return { analyses:fallbackTriage(messages), source:'demo', notice:'Using smart demo scoring. Add an AI key to enable model analysis.' };
   const prompt = messages.map(m => ({ id:m.id, from:m.sender, subject:m.subject, body:(m.body || m.snippet || '').slice(0,1500) }));
   try {
@@ -253,6 +258,19 @@ async function route(req, res) {
     if (!id) { const sessionId=newId(); setSessionCookie(res,sessionId); await saveSession(sessionId,session); }
     return json(res, 200, { gmailConfigured:gmailReady(), connected:Boolean(session.tokens), account:session.email || null, providerConfig:providerConfig(), demoCount:DEMO_MESSAGES.length });
   }
+  if (req.method === 'GET' && url.pathname === '/api/ai/models') {
+    const config=providerConfig();
+    if(config.provider!=='lmstudio') return json(res,200,{models:[config.model],provider:config.provider,available:true});
+    try {
+      const response=await fetch(`${config.lmStudioBaseUrl.replace(/\/$/,'')}/models`,{headers:{authorization:`Bearer ${process.env.LM_STUDIO_API_KEY || 'local'}`},signal:AbortSignal.timeout(5000)});
+      if(!response.ok)throw new Error(`LM Studio returned ${response.status}`);
+      const payload=await response.json();
+      const models=[...new Set((Array.isArray(payload.data)?payload.data:[]).map(item=>item?.id).filter(id=>validModelId(id)&&!/embed/i.test(id)))];
+      return json(res,200,{models,provider:config.provider,available:true});
+    } catch(error) {
+      return json(res,200,{models:[],provider:config.provider,available:false,notice:'LM Studio model list is unavailable. You can still enter a model ID manually.'});
+    }
+  }
   if (req.method === 'GET' && url.pathname === '/api/messages') {
     if (!session.tokens) return json(res, 200, { messages:DEMO_MESSAGES, mode:'demo' });
     try { const messages = await listGmailMessages(session); await saveSession(id, session); return json(res, 200, { messages, mode:'gmail' }); }
@@ -265,8 +283,10 @@ async function route(req, res) {
       if (!checkAiRateLimit('__global__',120) || !checkAiRateLimit(req.socket.remoteAddress || 'unknown',30)) return json(res,429,{error:'Too many AI requests. Take a short break and try again.'});
       const body = await readBody(req);
       if (session.tokens && providerConfig().provider === 'openrouter' && body.aiConsent !== true) return json(res,428,{error:'Confirm the OpenRouter privacy notice before analyzing Gmail.'});
+      const settings=providerConfig(), model=body.model===undefined?settings.model:String(body.model);
+      if(!validModelId(model))return json(res,400,{error:'Enter a valid model ID using letters, numbers, dots, underscores, slashes, colons, or hyphens.'});
       const messages = (Array.isArray(body.messages) ? body.messages : DEMO_MESSAGES).slice(0,12).map(m=>({ ...m, sender:String(m.sender||'').slice(0,180), subject:String(m.subject||'').slice(0,300), snippet:String(m.snippet||'').slice(0,500), body:String(m.body||'').slice(0,3000) }));
-      const result = await modelTriage(messages, providerConfig()); return json(res, 200, result);
+      const result = await modelTriage(messages,{...settings,model}); return json(res, 200, result);
     }
     catch (e) { return json(res, 400, { error:e.message }); }
   }
