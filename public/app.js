@@ -5,7 +5,13 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 import('https://esm.sh/animejs@4.1.3').then(module => { anime = module?.animate ? module : (module?.default?.animate ? module.default : module); }).catch(() => {});
 function animateTo(targets, options) {
   if (reducedMotion) return Promise.resolve();
-  if (anime?.animate) return new Promise(resolve => anime.animate(targets, { ...options, onComplete: resolve }));
+  if (anime?.animate) {
+    const { fromOpacity, fromTransform, ...params } = options;
+    return new Promise(resolve => anime.animate(targets, {
+      opacity:[fromOpacity ?? 0,1], translateY:[18,0], scale:[.97,1], duration:500, ease:'out(4)',
+      ...params, onComplete:resolve
+    }));
+  }
   const nodes = typeof targets === 'string' ? $$(targets) : (targets instanceof Element ? [targets] : [...targets]);
   const animations = nodes.map((node, i) => {
     const delay = typeof options.delay === 'function' ? options.delay(i) : (typeof options.delay === 'number' ? options.delay * i : 0);
@@ -167,7 +173,7 @@ async function beginSprint() {
     await showCountdown(); state.started=true; state.cardsAnimated=true; state.timer = setInterval(tick,1000); render();
     if (state.messages[0]) selectMessage(state.messages.find(m => !state.done.has(m.id))?.id || state.messages[0].id);
     animateTo($$('.mail-card'),{duration:650,delay:anime?.stagger?anime.stagger(65):65});
-    animateTo('.focus-card',{duration:550,fromTransform:'scale(.94)'});
+    animateTo('.focus-card',{duration:550,opacity:[0,1],translateY:[16,0],scale:[.94,1]});
   } catch (error) { $('#ai-status').textContent='READY'; toast(error.message,'error'); }
   finally { button.disabled = false; }
 }
@@ -208,8 +214,10 @@ async function applyAction(message,action) {
     const result=await api('/api/action',{method:'POST',body:JSON.stringify({messageId:message.id,action})});
     const card=$(`.mail-card[data-id="${CSS.escape(message.id)}"]`);
     if(card && !reducedMotion) {
-      if(anime?.animate) await new Promise(resolve=>anime.animate(card,{translateX:action==='trash'?180:action==='keep'?-120:0,translateY:action==='archive'?90:0,rotate:action==='trash'?8:action==='keep'?-5:0,scale:.78,opacity:0,duration:420,ease:'in(3)',onComplete:resolve}));
-      else await card.animate([{transform:'scale(1)',opacity:1},{transform:'translateY(36px) scale(.86)',opacity:0}],{duration:340,easing:'ease-in',fill:'forwards'}).finished.catch(()=>{});
+      try {
+        if(anime?.animate) await new Promise(resolve=>anime.animate(card,{translateX:action==='trash'?180:action==='keep'?-120:0,translateY:action==='archive'?90:0,rotate:action==='trash'?8:action==='keep'?-5:0,scale:.78,opacity:0,duration:420,ease:'in(3)',onComplete:resolve}));
+        else await card.animate([{transform:'scale(1)',opacity:1},{transform:'translateY(36px) scale(.86)',opacity:0}],{duration:340,easing:'ease-in',fill:'forwards'}).finished.catch(()=>{});
+      } catch (motionError) { console.warn('Action animation skipped:',motionError); }
     }
     const suggestion = state.analyses[message.id]?.suggestedAction;
     const correct = action === 'keep' ? suggestion !== 'archive' : action === 'archive' ? suggestion === 'archive' : false;
@@ -243,7 +251,7 @@ async function loadInbox() {
   try {
     const config=await api('/api/config'); state.connected=config.connected; state.account=config.account; state.configured=config.gmailConfigured; state.provider=config.providerConfig.provider;
     const result=await api('/api/messages'); const progress=await api('/api/progress'); state.history=progress.actions||[]; state.messages=result.messages || []; state.mode=result.mode || 'demo'; state.analyses={}; state.done.clear(); state.pointsById.clear(); state.correctById.clear(); state.started=false; state.cardsAnimated=false; state.score=0; state.correct=0; state.decisions=0; state.selected=null;
-    if (state.timer) clearInterval(state.timer); state.timer=null; state.seconds=180; $('.timer-ring').classList.remove('timer-danger'); $('#timer-text').textContent='03:00'; $('#timer-progress').style.strokeDashoffset='0'; $('#timer-progress').style.stroke='#586be4'; $('#ai-status').textContent='READY';
+    if (state.timer) clearInterval(state.timer); state.timer=null; state.seconds=180; $('.timer-ring').classList.remove('timer-danger'); $('#timer-text').textContent='03:00'; $('#timer-progress').style.strokeDashoffset='0'; $('#timer-progress').style.stroke='#00d2ff'; $('#ai-status').textContent='READY';
     render();
   } catch(error) { $('#mail-list').innerHTML=`<div class="empty-state">${escapeHtml(error.message)} <button id="retry-load">Try again</button></div>`; $('#retry-load')?.addEventListener('click',loadInbox); }
 }
