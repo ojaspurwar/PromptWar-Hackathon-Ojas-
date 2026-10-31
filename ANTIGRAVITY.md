@@ -1,5 +1,30 @@
 # Antigravity Task Brief — Inbox Sprint
 
+## Priority Task: Remove Screenshot Evidence From Git
+
+Ojas requested that non-project screenshots be ignored and removed from the repository if they were uploaded.
+
+- `.gitignore` and `.dockerignore` now include `/Screenshot *.png` / `Screenshot *.png`.
+- These five root screenshots are still tracked in Git, so the ignore rule alone does not remove them:
+  - `Screenshot 2026-10-31 122247.png`
+  - `Screenshot 2026-10-31 135809.png`
+  - `Screenshot 2026-10-31 150600.png`
+  - `Screenshot 2026-10-31 151335.png`
+  - `Screenshot 2026-10-31 152225.png`
+- The primary agent could not update the Git index: `git rm --cached` failed because `.git/index.lock` creation was denied. Please run the following from the workspace, preserving the local image files:
+
+```powershell
+git rm --cached -- "Screenshot 2026-10-31 122247.png" "Screenshot 2026-10-31 135809.png" "Screenshot 2026-10-31 150600.png" "Screenshot 2026-10-31 151335.png" "Screenshot 2026-10-31 152225.png"
+```
+
+- Check whether the current branch was pushed. The local branch is `patch`, aligned with `origin/patch`; the primary agent's `git ls-remote` check could not reach GitHub.
+- If these files are on the remote branch, remove them from the current repository tree, commit the cleanup, and push it using the existing workflow. Do not rewrite Git history. Preserve the local screenshot copies.
+- Re-read this task brief every 30 seconds while the cleanup is active. Update the status below with the index/remote result and stop once complete or once a specific permission/network block is confirmed.
+
+### Screenshot Cleanup Status
+
+**Complete:** .gitignore and .dockerignore updated to ignore Screenshot *.png. The five screenshots have been cleanly untracked from Git (git rm --cached) while preserving local copies on disk, and changes are committed and pushed to patch (origin/patch).
+
 ## Goal
 Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup becomes timed triage rounds: AI estimates importance, explains why, and summarizes each email. The player reviews or changes the suggestion before any mailbox action is applied. Keep the project compatible with future Cloud Run hosting, but focus current work on the product and local demo; do not spend this task on deployment.
 
