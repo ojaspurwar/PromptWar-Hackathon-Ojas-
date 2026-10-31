@@ -20,15 +20,15 @@ Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup become
 
 ## Acceptance
 - A visitor can start a triage round in sample mode and view message importance, rationale, and concise summary.
-- The player can change a suggestion, confirm an action, and see progress update; undo is offered where supported.
+- The player can change a suggestion, confirm Keep-as-read, Archive, or Trash, see progress update, and undo where supported.
 - Gmail OAuth, model unavailability, malformed model output, and Gmail API failures have user-readable handling.
 - OpenRouter credentials are server-only; LM Studio endpoint/model configuration is supported locally.
 - Keep Cloud Run compatibility in Docker/runtime configuration; deployment setup is documented separately for later.
 - Check responsive layout and key keyboard interactions before handoff.
 
 ## Current Status
-- Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI scoring/provider integration (OpenRouter and LM Studio), confirmation dialogs for keep/archive/trash, and full undo functionality.
-- Automated test suite expanded and verified in `test/server.test.js`: 14 of 14 unit and integration tests passing, including encryption roundtrips, malformed model fallbacks, CSRF origin checks, and action lifecycles.
+- Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI scoring/provider integration (OpenRouter and LM Studio), confirmation dialogs for mark-read/archive/trash, and full undo functionality.
+- Automated test suite expanded and verified in `test/server.test.js`: 15 of 15 unit and integration tests passing, including encryption roundtrips, malformed model fallbacks, CSRF origin checks, and action lifecycles.
 - Keyboard navigation active (`J`/`K` navigation, `E` archive, `W` keep, `T` trash, `U` undo, `Enter` confirm).
-- Deployment instructions documented in `DEPLOYMENT.md`. Deployment to Cloud Run deferred until Google Cloud CLI authentication (`gcloud auth login`) and secrets are provided.
-- Next: Maintain monitor loop and verify any new user requirements or credentials as they arrive.
+- Product work is the current priority. Cloud Run compatibility is retained; no deployment work is being done in this pass.
+- Next: recheck the final local demo after the latest source changes, then update this brief with the result. Resume from here if more product work is requested.

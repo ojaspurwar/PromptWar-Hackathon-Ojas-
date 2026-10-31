@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
-const { server, parseCookies, sign, encrypt, decrypt, normalizeEmail, fallbackTriage, modelTriage } = require('../server.js');
+const { server, parseCookies, sign, encrypt, decrypt, normalizeEmail, fallbackTriage, modelTriage, gmailActionOperation } = require('../server.js');
 
 let baseUrl;
 let testServer;
@@ -178,6 +178,15 @@ test('Unit: normalizeEmail formats Gmail payload', () => {
   assert.equal(normalized.unread, true);
   assert.equal(normalized.important, true);
   assert.equal(normalized.body, 'Email body content here');
+});
+
+test('Unit: Gmail actions leave important mail accessible and make undo reversible', () => {
+  assert.deepEqual(gmailActionOperation('keep'), { endpoint:'modify', body:{removeLabelIds:['UNREAD']} });
+  assert.deepEqual(gmailActionOperation('keep', true), { endpoint:'modify', body:{addLabelIds:['UNREAD']} });
+  assert.deepEqual(gmailActionOperation('archive'), { endpoint:'modify', body:{removeLabelIds:['INBOX']} });
+  assert.deepEqual(gmailActionOperation('archive', true), { endpoint:'modify', body:{addLabelIds:['INBOX']} });
+  assert.deepEqual(gmailActionOperation('trash'), { endpoint:'trash', body:{} });
+  assert.deepEqual(gmailActionOperation('trash', true), { endpoint:'untrash', body:{} });
 });
 
 test('Unit: encryption protects session tokens and roundtrips', () => {

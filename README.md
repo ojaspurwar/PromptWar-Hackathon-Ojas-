@@ -26,9 +26,10 @@ For connected Gmail, the first OpenRouter triage asks permission before sending 
 
 ## Connect Gmail
 
-Enable Gmail API and configure a Google OAuth web client with the local callback `http://localhost:8080/auth/callback`. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`; then add your account as an OAuth test user. The app reads up to 12 unread messages per round. It requests `gmail.modify` so confirmed archive and Trash actions can be applied; both have an Undo path.
+Enable Gmail API and configure a Google OAuth web client with the local callback `http://localhost:8080/auth/callback`. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`; then add your account as an OAuth test user. The app reads up to 12 unread messages per round. It requests `gmail.modify` so confirmed mark-read, Archive, and Trash actions can be applied; each has an Undo path.
 
 ## Project shape
 
 The app uses a dependency-free Node.js HTTP server and responsive HTML/CSS/JavaScript. Gmail and model credentials stay on the server. In Cloud Run mode, Firestore stores minimal session/action history and Gmail tokens are encrypted before storage. Cloud Run deployment configuration remains available in `Dockerfile` and `cloudbuild.yaml`; see [DEPLOYMENT.md](./DEPLOYMENT.md) when deployment work begins.
+
 

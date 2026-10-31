@@ -44,7 +44,3 @@ gcloud builds submit --config cloudbuild.yaml --region=$Region --substitutions="
 
 Add teammate/tester accounts to the OAuth consent screen's test user list. Gmail body access through `gmail.modify` is a restricted scope; this setup is intended for the invited test audience, not an unrestricted public release. Review Google's [Gmail scope requirements](https://developers.google.com/workspace/gmail/api/auth/scopes) before a public launch.
 
-## Antigravity coordination
-
-See [`ANTIGRAVITY.md`](./ANTIGRAVITY.md) for the project brief, acceptance flow, and request to re-read the shared brief every 30 seconds while work is active. This workspace does not include a tool for waking or scheduling Antigravity; the polling instruction applies when that agent is active.
-

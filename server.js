@@ -157,6 +157,11 @@ function normalizeEmail(raw, index) {
   const labels = raw.labelIds || [];
   return { id:raw.id || `message-${index}`, sender:match ? match[1].replaceAll('"','').trim() : from || 'Unknown sender', email:match?.[2] || from, subject:header(headers,'subject') || '(no subject)', snippet:raw.snippet || body.slice(0,180), date:header(headers,'date'), unread:labels.includes('UNREAD'), important:labels.includes('IMPORTANT'), labels, body:body.slice(0,3000), avatar:(match ? match[1] : from).trim().slice(0,1).toUpperCase() || 'M' };
 }
+function gmailActionOperation(action, undo = false) {
+  if (action === 'trash') return { endpoint:undo ? 'untrash' : 'trash', body:{} };
+  const label = action === 'keep' ? 'UNREAD' : 'INBOX';
+  return { endpoint:'modify', body:{ [undo ? 'addLabelIds' : 'removeLabelIds']:[label] } };
+}
 async function listGmailMessages(session) {
   let result = await gmailFetch(session.tokens, `messages?q=${encodeURIComponent('in:inbox is:unread')}&maxResults=12`);
   session.tokens = result.tokens;
@@ -255,10 +260,9 @@ async function route(req, res) {
       const sessionId = id || newId(); if (!id) setSessionCookie(res, sessionId);
       let mailboxApplied=false;
       if (session.tokens) {
-        const route = body.action === 'trash' ? `messages/${encodeURIComponent(body.messageId)}/trash` : `messages/${encodeURIComponent(body.messageId)}/modify`;
-        const removeLabelIds = body.action === 'keep' ? ['UNREAD'] : ['INBOX'];
-        const options = body.action === 'trash' ? {method:'POST',body:'{}'} : {method:'POST',body:JSON.stringify({removeLabelIds})};
-        const result = await gmailFetch(session.tokens, route, options); session.tokens = result.tokens; mailboxApplied=true;
+        const operation=gmailActionOperation(body.action);
+        const route=`messages/${encodeURIComponent(body.messageId)}/${operation.endpoint}`;
+        const result = await gmailFetch(session.tokens, route, {method:'POST',body:JSON.stringify(operation.body)}); session.tokens = result.tokens; mailboxApplied=true;
       }
       const result = { messageId:body.messageId, action:body.action, timestamp:Date.now() };
       session.actions = [...(session.actions || []), result].slice(-30);
@@ -274,10 +278,9 @@ async function route(req, res) {
       const sessionId = id || newId(); if (!id) setSessionCookie(res, sessionId);
       let mailboxUndone=false;
       if (session.tokens) {
-        const route = action.action === 'trash' ? `messages/${encodeURIComponent(action.messageId)}/untrash` : `messages/${encodeURIComponent(action.messageId)}/modify`;
-        const addLabelIds = action.action === 'keep' ? ['UNREAD'] : ['INBOX'];
-        const options = action.action === 'trash' ? {method:'POST',body:'{}'} : {method:'POST',body:JSON.stringify({addLabelIds})};
-        const result = await gmailFetch(session.tokens, route, options); session.tokens = result.tokens; mailboxUndone=true;
+        const operation=gmailActionOperation(action.action,true);
+        const route=`messages/${encodeURIComponent(action.messageId)}/${operation.endpoint}`;
+        const result = await gmailFetch(session.tokens, route, {method:'POST',body:JSON.stringify(operation.body)}); session.tokens = result.tokens; mailboxUndone=true;
       }
       action.undone = true;
       try { await saveSession(sessionId, session); }
@@ -335,4 +338,4 @@ const server = http.createServer((req,res) => route(req,res).catch(error => { co
 if (require.main === module) {
   server.listen(PORT,'0.0.0.0',() => console.log(`Inbox Sprint listening on ${PORT}`));
 }
-module.exports = { server, route, normalizeEmail, fallbackTriage, modelTriage, parseCookies, sign, readSessionId, encrypt, decrypt };
+module.exports = { server, route, normalizeEmail, fallbackTriage, modelTriage, gmailActionOperation, parseCookies, sign, readSessionId, encrypt, decrypt };
