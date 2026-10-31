@@ -1,6 +1,39 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const state = { messages:[], analyses:{}, mode:'demo', connected:false, account:null, configured:false, started:false, seconds:180, timer:null, selected:null, done:new Map(), pointsById:new Map(), correctById:new Map(), history:[], score:0, correct:0, decisions:0, pending:null, provider:'openrouter', notice:null };
+let anime = null;
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+import('https://esm.sh/animejs@4.1.3').then(module => { anime = module?.animate ? module : (module?.default?.animate ? module.default : module); }).catch(() => {});
+function animateTo(targets, options) {
+  if (reducedMotion) return Promise.resolve();
+  if (anime?.animate) return new Promise(resolve => anime.animate(targets, { ...options, onComplete: resolve }));
+  const nodes = typeof targets === 'string' ? $$(targets) : (targets instanceof Element ? [targets] : [...targets]);
+  const animations = nodes.map((node, i) => {
+    const delay = typeof options.delay === 'function' ? options.delay(i) : (typeof options.delay === 'number' ? options.delay * i : 0);
+    return node.animate([
+      { opacity: options.fromOpacity ?? 0, transform: options.fromTransform || 'translateY(18px) scale(.97)' },
+      { opacity: 1, transform: options.transform || 'translateY(0) scale(1)' }
+    ], { duration: options.duration || 500, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both', delay });
+  });
+  return Promise.all(animations.map(animation => animation.finished.catch(() => {})));
+}
+async function showCountdown() {
+  if (reducedMotion) return;
+  const overlay=$('#game-overlay'), count=$('#overlay-count');
+  overlay.classList.add('active'); overlay.setAttribute('aria-hidden','false');
+  for (const value of ['3','2','1','GO!']) {
+    count.textContent=value;
+    count.style.animation='none'; void count.offsetWidth; count.style.animation='count-pop .48s cubic-bezier(.16,1,.3,1) both';
+    await new Promise(resolve=>setTimeout(resolve, value==='GO!'?380:410));
+  }
+  overlay.classList.remove('active'); overlay.setAttribute('aria-hidden','true');
+}
+function burstConfetti() {
+  if (reducedMotion) return;
+  const field=$('#confetti-field'); field.replaceChildren();
+  const colors=['#f6ca68','#68e0bc','#a9a4ff','#ff8796','#fff'];
+  for(let i=0;i<42;i++) { const piece=document.createElement('i'); piece.style.setProperty('--x',`${Math.random()*100}%`); piece.style.setProperty('--drift',`${(Math.random()-.5)*260}px`); piece.style.setProperty('--spin',`${Math.random()*720-360}deg`); piece.style.setProperty('--confetti-color',colors[i%colors.length]); piece.style.setProperty('--fall',`${900+Math.random()*900}ms`); field.append(piece); }
+}
+const state = { messages:[], analyses:{}, mode:'demo', connected:false, account:null, configured:false, started:false, cardsAnimated:false, seconds:180, timer:null, selected:null, done:new Map(), pointsById:new Map(), correctById:new Map(), history:[], score:0, correct:0, decisions:0, pending:null, provider:'openrouter', notice:null };
 const avatarClasses = ['','violet','mint','peach','blue','gold','rose'];
 const icons = {
   archive:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6"/></svg>',
@@ -85,6 +118,7 @@ function render() {
       <div class="mail-actions" aria-label="Email actions">${done ? `<button class="mail-action" data-action="undo" title="Undo action" aria-label="Undo action">↶</button>` : `<button class="mail-action keep" data-action="keep" title="Keep and mark reviewed" aria-label="Keep and mark reviewed">${icons.keep}</button><button class="mail-action archive" data-action="archive" title="Archive" aria-label="Archive">${icons.archive}</button><button class="mail-action trash" data-action="trash" title="Move to trash" aria-label="Move to trash">${icons.trash}</button>`}</div>
     </article>`;
   }).join('');
+  if(state.started && state.done.size===0 && !state.cardsAnimated) { state.cardsAnimated=true; animateTo($$('.mail-card'),{duration:650,delay:anime?.stagger?anime.stagger(65):65}); }
   $$('.mail-card').forEach(card => {
     card.addEventListener('click', e => { if (e.target.closest('[data-action]')) return; selectMessage(card.dataset.id); });
   });
@@ -127,11 +161,13 @@ async function beginSprint() {
   const button = $('#start-button'); button.disabled = true; $('#start-label').textContent = 'Reading your inbox…'; $('#ai-status').textContent='THINKING';
   try {
     const result = await api('/api/triage',{method:'POST',body:JSON.stringify({messages:state.messages,aiConsent:sessionStorage.getItem('inboxsprint_openrouter_consent')==='v1'})});
-    state.analyses = result.analyses || {}; state.started = true; state.seconds = 180;
+    state.analyses = result.analyses || {}; state.seconds = 180;
     if (result.notice) toast(result.notice);
     $('#ai-status').textContent = result.source === 'demo' ? 'SMART MODE' : 'ANALYZED';
-    state.timer = setInterval(tick,1000); render();
+    await showCountdown(); state.started=true; state.cardsAnimated=true; state.timer = setInterval(tick,1000); render();
     if (state.messages[0]) selectMessage(state.messages.find(m => !state.done.has(m.id))?.id || state.messages[0].id);
+    animateTo($$('.mail-card'),{duration:650,delay:anime?.stagger?anime.stagger(65):65});
+    animateTo('.focus-card',{duration:550,fromTransform:'scale(.94)'});
   } catch (error) { $('#ai-status').textContent='READY'; toast(error.message,'error'); }
   finally { button.disabled = false; }
 }
@@ -141,6 +177,7 @@ function tick() {
   $('#timer-text').textContent = `${m}:${s}`;
   $('#timer-progress').style.strokeDashoffset = String(333 * (1 - state.seconds / 180));
   if (state.seconds <= 20) $('#timer-progress').style.stroke = '#dc5963';
+  if(state.seconds===20) { $('.timer-ring').classList.add('timer-danger'); toast('Final 20 seconds! Keep your streak alive.'); }
   if (state.seconds <= 0) { clearInterval(state.timer); state.timer = null; toast('Time is up — finish the remaining messages at your own pace.',''); }
 }
 function handleAction(id, action) {
@@ -169,15 +206,21 @@ async function applyAction(message,action) {
   if (button) button.disabled = true;
   try {
     const result=await api('/api/action',{method:'POST',body:JSON.stringify({messageId:message.id,action})});
+    const card=$(`.mail-card[data-id="${CSS.escape(message.id)}"]`);
+    if(card && !reducedMotion) {
+      if(anime?.animate) await new Promise(resolve=>anime.animate(card,{translateX:action==='trash'?180:action==='keep'?-120:0,translateY:action==='archive'?90:0,rotate:action==='trash'?8:action==='keep'?-5:0,scale:.78,opacity:0,duration:420,ease:'in(3)',onComplete:resolve}));
+      else await card.animate([{transform:'scale(1)',opacity:1},{transform:'translateY(36px) scale(.86)',opacity:0}],{duration:340,easing:'ease-in',fill:'forwards'}).finished.catch(()=>{});
+    }
     const suggestion = state.analyses[message.id]?.suggestedAction;
     const correct = action === 'keep' ? suggestion !== 'archive' : action === 'archive' ? suggestion === 'archive' : false;
     const points = action === 'keep' && suggestion === 'keep' || action === 'archive' && suggestion === 'archive' ? 10 : action === 'trash' ? 3 : 5;
     state.decisions++; if (correct) state.correct++;
     state.score += points; state.pointsById.set(message.id,points); state.correctById.set(message.id,correct);
     state.done.set(message.id,action);
+    const scoreCard=$('.score-card'); scoreCard.classList.remove('score-pop'); void scoreCard.offsetWidth; scoreCard.classList.add('score-pop');
     render();
     toast(result.warning || (action === 'keep' ? 'Marked as read and kept in your inbox.' : action === 'archive' ? 'Archived. One less thing in your inbox.' : 'Moved to Trash.'),result.warning ? '' : 'success');
-    if (state.done.size === state.messages.length) { if (state.timer) clearInterval(state.timer); state.timer=null; $('#ai-status').textContent='COMPLETE'; $('#ai-summary').innerHTML='<div class="summary-placeholder"><span class="placeholder-icon">✦</span><p>Inbox reset complete. You cleared the noise and kept the signal.</p></div>'; $('#ai-summary').focus({preventScroll:true}); recordCompletedSprint(); }
+    if (state.done.size === state.messages.length) { if (state.timer) clearInterval(state.timer); state.timer=null; $('#ai-status').textContent='COMPLETE'; $('#ai-summary').innerHTML='<div class="summary-placeholder"><span class="placeholder-icon">✦</span><p>Inbox reset complete. You cleared the noise and kept the signal.</p></div>'; $('#ai-summary').focus({preventScroll:true}); recordCompletedSprint(); $('#overlay-kicker').textContent='ROUND CLEARED'; $('#overlay-count').textContent='✦'; $('#overlay-caption').textContent=`${state.score} points · inbox reset`; $('#game-overlay').classList.add('active','victory'); $('#game-overlay').setAttribute('aria-hidden','false'); burstConfetti(); setTimeout(()=>{$('#game-overlay').classList.remove('active','victory');$('#game-overlay').setAttribute('aria-hidden','true');},1900); }
     if (state.selected === message.id) { const next=state.messages.find(m=>!state.done.has(m.id)); if (next) selectMessage(next.id); }
   } catch(error) { toast(error.message,'error'); if(button) button.disabled=false; }
 }
@@ -199,8 +242,8 @@ async function loadInbox() {
   $('#mail-list').innerHTML='<div class="loading-state">Getting your inbox ready…</div>';
   try {
     const config=await api('/api/config'); state.connected=config.connected; state.account=config.account; state.configured=config.gmailConfigured; state.provider=config.providerConfig.provider;
-    const result=await api('/api/messages'); const progress=await api('/api/progress'); state.history=progress.actions||[]; state.messages=result.messages || []; state.mode=result.mode || 'demo'; state.analyses={}; state.done.clear(); state.pointsById.clear(); state.correctById.clear(); state.started=false; state.score=0; state.correct=0; state.decisions=0; state.selected=null;
-    if (state.timer) clearInterval(state.timer); state.timer=null; state.seconds=180; $('#timer-text').textContent='03:00'; $('#timer-progress').style.strokeDashoffset='0'; $('#timer-progress').style.stroke='#586be4'; $('#ai-status').textContent='READY';
+    const result=await api('/api/messages'); const progress=await api('/api/progress'); state.history=progress.actions||[]; state.messages=result.messages || []; state.mode=result.mode || 'demo'; state.analyses={}; state.done.clear(); state.pointsById.clear(); state.correctById.clear(); state.started=false; state.cardsAnimated=false; state.score=0; state.correct=0; state.decisions=0; state.selected=null;
+    if (state.timer) clearInterval(state.timer); state.timer=null; state.seconds=180; $('.timer-ring').classList.remove('timer-danger'); $('#timer-text').textContent='03:00'; $('#timer-progress').style.strokeDashoffset='0'; $('#timer-progress').style.stroke='#586be4'; $('#ai-status').textContent='READY';
     render();
   } catch(error) { $('#mail-list').innerHTML=`<div class="empty-state">${escapeHtml(error.message)} <button id="retry-load">Try again</button></div>`; $('#retry-load')?.addEventListener('click',loadInbox); }
 }

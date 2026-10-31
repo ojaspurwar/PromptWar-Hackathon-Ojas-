@@ -349,7 +349,7 @@ async function route(req, res) {
   if (!resolved.startsWith(ROOT + path.sep) && resolved !== path.join(ROOT,'index.html')) return json(res,403,{error:'Forbidden'});
   fs.readFile(resolved,(error, data) => {
     if (error) return json(res,404,{error:'Page not found.'});
-    res.writeHead(200,{'content-type':MIME[path.extname(resolved)] || 'application/octet-stream','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'strict-origin-when-cross-origin','content-security-policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",'cache-control':'no-store'}); res.end(data);
+    res.writeHead(200,{'content-type':MIME[path.extname(resolved)] || 'application/octet-stream','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'strict-origin-when-cross-origin','content-security-policy':"default-src 'self'; script-src 'self' https://esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://esm.sh; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",'cache-control':'no-store'}); res.end(data);
   });
 }
 const server = http.createServer((req,res) => route(req,res).catch(error => { console.error('Request error:',error); json(res,500,{error:error.message || 'Something went wrong.'}); }));

@@ -30,6 +30,6 @@ Enable Gmail API and configure a Google OAuth web client with the local callback
 
 ## Project shape
 
-The app uses a dependency-free Node.js HTTP server and responsive HTML/CSS/JavaScript. Gmail and model credentials stay on the server. In Cloud Run mode, Firestore stores minimal session/action history and Gmail tokens are encrypted before storage. Cloud Run deployment configuration remains available in `Dockerfile` and `cloudbuild.yaml`; see [DEPLOYMENT.md](./DEPLOYMENT.md) when deployment work begins.
+The app uses a Node.js HTTP server and responsive HTML/CSS/JavaScript. The browser loads Anime.js 4.1.3 from esm.sh for the sprint motion; built-in Web Animations and CSS effects keep interactions working if the module cannot load. Gmail and model credentials stay on the server. In Cloud Run mode, Firestore stores minimal session/action history and Gmail tokens are encrypted before storage. Cloud Run deployment configuration remains available in `Dockerfile` and `cloudbuild.yaml`; see [DEPLOYMENT.md](./DEPLOYMENT.md) when deployment work begins.
 
 
