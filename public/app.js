@@ -156,6 +156,7 @@ function handleAction(id, action) {
   $('#dialog-message').innerHTML = `<strong>${escapeHtml(message.subject)}</strong><small>${escapeHtml(message.sender)} · ${escapeHtml(message.email || '')}</small>`;
   $('#dialog-confirm').innerHTML = `${action === 'trash' ? 'Move to Trash' : action === 'keep' ? 'Keep and mark read' : 'Yes, archive it'} <span class="button-arrow">→</span>`;
   $('#action-dialog').showModal();
+  $('#action-dialog .secondary-button')?.focus();
 }
 async function confirmPending() {
   if (!state.pending) return;
