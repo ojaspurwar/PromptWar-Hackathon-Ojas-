@@ -29,7 +29,7 @@ Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup become
 
 ## Current Status
 - Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI provider integration (OpenRouter and LM Studio), confirmed mark-read/archive/trash actions, undo during a sprint and after reload, local day streak, and Player Level/XP progression (8 titles from Rookie to Inbox Legend).
-- Automated suite: 18 of 18 tests pass, covering endpoints, session/action lifecycle, Gmail action mapping, encryption, malformed model fallback, CSRF origin checks, local .env parsing, OAuth URL generation, and LM Studio text-mode JSON triage.
+- Automated suite: 19 of 19 tests pass, covering endpoints, session/action lifecycle, Gmail action mapping, encryption, malformed model fallback, CSRF origin checks, local .env parsing, OAuth URL generation, LM Studio text-mode JSON triage, and GET /api/ai/models discovery.
 - Port diagnostic: Detected Steam CEF remote debugging claiming `127.0.0.1:8080`. Server now detects loopback shadows and serves across all local interfaces; accessible at `http://127.0.0.2:8080` or `http://localhost:8080` (when Steam is closed).
 - Keyboard navigation: `J`/`K` moves and focuses messages, `E` archives, `W` keeps/marks read, `T` moves to Trash, `U` undoes, and Ctrl/Cmd+Enter confirms the action dialog while plain Enter honors the focused button.
 - Latest local HTTP smoke check passed on `http://127.0.0.2:8080` for health, sample inbox, fallback triage, action history, undo, static assets, and security headers.
