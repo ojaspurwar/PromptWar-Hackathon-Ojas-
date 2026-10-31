@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
-const { server, parseCookies, sign, encrypt, decrypt, normalizeEmail, fallbackTriage } = require('../server.js');
+const { server, parseCookies, sign, encrypt, decrypt, normalizeEmail, fallbackTriage, modelTriage } = require('../server.js');
 
 let baseUrl;
 let testServer;
@@ -112,6 +112,23 @@ test('POST /api/action and /api/undo lifecycle', async () => {
   assert.equal(undoRes2.status, 404);
 });
 
+test('POST /api/action keeps a message available and records an undoable review', async () => {
+  const actionRes = await fetch(`${baseUrl}/api/action`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ messageId: 'keep-1', action: 'keep' })
+  });
+  assert.equal(actionRes.status, 200);
+  assert.equal((await actionRes.json()).action.action, 'keep');
+  const cookie = actionRes.headers.get('set-cookie');
+  const undoRes = await fetch(`${baseUrl}/api/undo`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie },
+    body: JSON.stringify({ messageId: 'keep-1' })
+  });
+  assert.equal(undoRes.status, 200);
+});
+
 test('Origin checking rejects cross-site mutations', async () => {
   const res = await fetch(`${baseUrl}/api/action`, {
     method: 'POST',
@@ -161,4 +178,42 @@ test('Unit: normalizeEmail formats Gmail payload', () => {
   assert.equal(normalized.unread, true);
   assert.equal(normalized.important, true);
   assert.equal(normalized.body, 'Email body content here');
+});
+
+test('Unit: encryption protects session tokens and roundtrips', () => {
+  const oldKey = process.env.SESSION_ENCRYPTION_KEY;
+  process.env.SESSION_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
+  try {
+    const value = { refresh_token: 'private-token', email: 'test@example.com' };
+    const ciphertext = encrypt(value);
+    assert.notEqual(ciphertext, JSON.stringify(value));
+    assert.deepEqual(decrypt(ciphertext), value);
+    const [iv, tag, body] = ciphertext.split('.');
+    const alteredBody = `${body.slice(0, -1)}${body.endsWith('A') ? 'B' : 'A'}`;
+    assert.equal(decrypt(`${iv}.${tag}.${alteredBody}`), null);
+  } finally {
+    if (oldKey === undefined) delete process.env.SESSION_ENCRYPTION_KEY;
+    else process.env.SESSION_ENCRYPTION_KEY = oldKey;
+  }
+});
+
+test('Unit: malformed model output falls back to local triage', async () => {
+  const oldKey = process.env.OPENROUTER_API_KEY;
+  const oldProvider = process.env.AI_PROVIDER;
+  const oldFetch = global.fetch;
+  process.env.OPENROUTER_API_KEY = 'test-only-key';
+  process.env.AI_PROVIDER = 'openrouter';
+  global.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: '```json\n{broken\n```' } }] }), { status: 200 });
+  try {
+    const result = await modelTriage([{ id: 'urgent-1', subject: 'Urgent contract approval', snippet: 'Decision needed today' }], {});
+    assert.equal(result.source, 'demo');
+    assert.equal(result.analyses['urgent-1'].importance, 'high');
+    assert.match(result.notice, /could not analyze/i);
+  } finally {
+    global.fetch = oldFetch;
+    if (oldKey === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = oldKey;
+    if (oldProvider === undefined) delete process.env.AI_PROVIDER;
+    else process.env.AI_PROVIDER = oldProvider;
+  }
 });

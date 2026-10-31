@@ -13,7 +13,8 @@ function getStreakData() {
   catch { return {count:0,lastDay:'',days:[]}; }
 }
 function renderStreak() {
-  const saved=getStreakData(), today=localDateKey(), yesterday=localDateKey(new Date(Date.now()-86400000));
+  const saved=getStreakData(), today=localDateKey(), yesterdayDate=new Date(); yesterdayDate.setDate(yesterdayDate.getDate()-1);
+  const yesterday=localDateKey(yesterdayDate);
   const currentCount=saved.lastDay===today || saved.lastDay===yesterday ? Number(saved.count)||0 : 0;
   $('#streak-value').textContent=currentCount ? `${currentCount} day streak` : 'Start a streak today';
   $('#streak-days').innerHTML=Array.from({length:5},(_,i)=>{
@@ -23,7 +24,8 @@ function renderStreak() {
   }).join('');
 }
 function recordCompletedSprint() {
-  const saved=getStreakData(), today=localDateKey(), yesterday=localDateKey(new Date(Date.now()-86400000));
+  const saved=getStreakData(), today=localDateKey(), yesterdayDate=new Date(); yesterdayDate.setDate(yesterdayDate.getDate()-1);
+  const yesterday=localDateKey(yesterdayDate);
   if(saved.lastDay===today)return;
   const count=saved.lastDay===yesterday?(Number(saved.count)||0)+1:1;
   const days=[...new Set([...(saved.days||[]),today])].slice(-35);
@@ -61,6 +63,9 @@ function render() {
   $('#mode-pill').innerHTML = `<span class="pulse-dot"></span> ${state.mode === 'gmail' ? 'Gmail connected' : 'Sample inbox'}`;
   $('#connect-label').textContent = state.connected ? 'Disconnect Gmail' : 'Connect Gmail';
   $('#account-status').textContent = state.connected ? (state.account || 'Gmail connected') : 'Demo workspace';
+  const accountName=state.connected&&state.account?state.account.split('@')[0].replace(/[._-]+/g,' '):'Demo player';
+  $('#profile-name').textContent=accountName.replace(/\b\w/g,char=>char.toUpperCase());
+  $('#profile-avatar').textContent=accountName.trim().slice(0,1).toUpperCase()||'D';
   $('#start-label').textContent = state.messages.length && state.done.size === state.messages.length ? 'Sprint complete' : state.started ? 'Sprint in progress' : 'Start your sprint';
   $('#start-button').disabled = state.messages.length > 0 && state.done.size === state.messages.length;
   if (!state.messages.length) { list.innerHTML = '<div class="empty-state">Your unread inbox is clear. Nice work.</div>'; renderStats(); return; }
@@ -128,14 +133,13 @@ function handleAction(id, action) {
   if (action === 'undo') return undoAction(id);
   const message = state.messages.find(m => m.id === id);
   if (!message || state.done.has(id)) return;
-  if (action === 'keep') { applyAction(message,'keep'); return; }
   state.pending = {message,action};
-  $('#dialog-mark').className = `dialog-mark ${action === 'trash' ? 'trash' : ''}`;
-  $('#dialog-kicker').textContent = action === 'trash' ? 'ONE LAST CHECK' : 'QUICK CHECK';
-  $('#dialog-title').textContent = action === 'trash' ? 'Move this to Trash?' : 'Archive this message?';
-  $('#dialog-copy').textContent = action === 'trash' ? 'It will move to Gmail Trash. You can restore it before it is permanently deleted.' : 'It’ll leave your inbox, but you can bring it back anytime.';
+  $('#dialog-mark').className = `dialog-mark ${action === 'trash' ? 'trash' : action === 'keep' ? 'keep' : ''}`;
+  $('#dialog-kicker').textContent = action === 'trash' ? 'ONE LAST CHECK' : action === 'keep' ? 'KEEP IN INBOX' : 'QUICK CHECK';
+  $('#dialog-title').textContent = action === 'trash' ? 'Move this to Trash?' : action === 'keep' ? 'Keep it and mark it read?' : 'Archive this message?';
+  $('#dialog-copy').textContent = action === 'trash' ? 'It will move to Gmail Trash. You can restore it before it is permanently deleted.' : action === 'keep' ? 'It stays in your inbox and leaves the unread pile. You can undo this and mark it unread again.' : 'It’ll leave your inbox, but you can bring it back anytime.';
   $('#dialog-message').innerHTML = `<strong>${escapeHtml(message.subject)}</strong><small>${escapeHtml(message.sender)} · ${escapeHtml(message.email || '')}</small>`;
-  $('#dialog-confirm').innerHTML = `${action === 'trash' ? 'Move to Trash' : 'Yes, archive it'} <span class="button-arrow">→</span>`;
+  $('#dialog-confirm').innerHTML = `${action === 'trash' ? 'Move to Trash' : action === 'keep' ? 'Keep and mark read' : 'Yes, archive it'} <span class="button-arrow">→</span>`;
   $('#action-dialog').showModal();
 }
 async function confirmPending() {
@@ -148,7 +152,7 @@ async function applyAction(message,action) {
   const button = $(`.mail-card[data-id="${CSS.escape(message.id)}"] [data-action="${action}"]`);
   if (button) button.disabled = true;
   try {
-    await api('/api/action',{method:'POST',body:JSON.stringify({messageId:message.id,action})});
+    const result=await api('/api/action',{method:'POST',body:JSON.stringify({messageId:message.id,action})});
     const suggestion = state.analyses[message.id]?.suggestedAction;
     const correct = action === 'keep' ? suggestion !== 'archive' : action === 'archive' ? suggestion === 'archive' : false;
     const points = action === 'keep' && suggestion === 'keep' || action === 'archive' && suggestion === 'archive' ? 10 : action === 'trash' ? 3 : 5;
@@ -156,14 +160,14 @@ async function applyAction(message,action) {
     state.score += points; state.pointsById.set(message.id,points); state.correctById.set(message.id,correct);
     state.done.set(message.id,action);
     render();
-    toast(action === 'keep' ? 'Kept in your inbox — nice call.' : action === 'archive' ? 'Archived. One less thing in your inbox.' : 'Moved to Trash.','success');
+    toast(result.warning || (action === 'keep' ? 'Marked as read and kept in your inbox.' : action === 'archive' ? 'Archived. One less thing in your inbox.' : 'Moved to Trash.'),result.warning ? '' : 'success');
     if (state.done.size === state.messages.length) { if (state.timer) clearInterval(state.timer); state.timer=null; $('#ai-status').textContent='COMPLETE'; $('#ai-summary').innerHTML='<div class="summary-placeholder"><span class="placeholder-icon">✦</span><p>Inbox reset complete. You cleared the noise and kept the signal.</p></div>'; recordCompletedSprint(); }
     if (state.selected === message.id) { const next=state.messages.find(m=>!state.done.has(m.id)); if (next) selectMessage(next.id); }
   } catch(error) { toast(error.message,'error'); if(button) button.disabled=false; }
 }
 async function undoAction(id) {
   const action=state.done.get(id); if (!action) return;
-  try { await api('/api/undo',{method:'POST',body:JSON.stringify({messageId:id})}); state.done.delete(id); state.decisions=Math.max(0,state.decisions-1); state.score=Math.max(0,state.score-(state.pointsById.get(id)||0)); if(state.correctById.get(id))state.correct=Math.max(0,state.correct-1);state.pointsById.delete(id);state.correctById.delete(id);render(); toast('Action undone. Message back in your round.','success'); }
+  try { const result=await api('/api/undo',{method:'POST',body:JSON.stringify({messageId:id})}); state.done.delete(id); state.decisions=Math.max(0,state.decisions-1); state.score=Math.max(0,state.score-(state.pointsById.get(id)||0)); if(state.correctById.get(id))state.correct=Math.max(0,state.correct-1);state.pointsById.delete(id);state.correctById.delete(id);render(); toast(result.warning || 'Action undone. Message back in your round.',result.warning ? '' : 'success'); }
   catch(error) { toast(error.message,'error'); }
 }
 async function loadInbox() {

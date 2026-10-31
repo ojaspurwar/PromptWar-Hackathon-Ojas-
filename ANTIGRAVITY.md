@@ -1,7 +1,7 @@
 # Antigravity Task Brief — Inbox Sprint
 
 ## Goal
-Build and finish Inbox Sprint, a hackathon web app that turns Gmail cleanup into timed triage rounds. AI estimates importance, explains why, and summarizes each email. The player reviews or changes the suggestion before any mailbox action is applied.
+Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup becomes timed triage rounds: AI estimates importance, explains why, and summarizes each email. The player reviews or changes the suggestion before any mailbox action is applied. Keep the project compatible with future Cloud Run hosting, but focus current work on the product and local demo; do not spend this task on deployment.
 
 ## Architecture
 - Deploy the full-stack app as a Google Cloud Run service.
@@ -16,19 +16,18 @@ Build and finish Inbox Sprint, a hackathon web app that turns Gmail cleanup into
 2. Re-read this file every 30 seconds while work is active; continue from its latest task/status until the project is complete.
 3. Update the status and next concrete task here whenever a meaningful milestone or blocker changes.
 4. If a command or integration is unavailable, find an available tool or ask for help; do not silently skip required behavior.
-5. Do not claim completion until the demo flow works and deployment is verified, or clearly report the exact external blocker.
+5. Do not claim completion until the local sample flow and core game interactions work. Report any real Gmail/OpenRouter requirements that cannot be exercised without credentials.
 
 ## Acceptance
 - A visitor can start a triage round in sample mode and view message importance, rationale, and concise summary.
 - The player can change a suggestion, confirm an action, and see progress update; undo is offered where supported.
 - Gmail OAuth, model unavailability, malformed model output, and Gmail API failures have user-readable handling.
 - OpenRouter credentials are server-only; LM Studio endpoint/model configuration is supported locally.
-- Cloud Run deployment files and setup/deployment instructions are included. Use Firestore and Secret Manager when configured.
+- Keep Cloud Run compatibility in Docker/runtime configuration; deployment setup is documented separately for later.
 - Check responsive layout and key keyboard interactions before handoff.
 
 ## Current Status
-- App implementation is complete and verified: responsive triage UI, seeded sample inbox, AI scoring/provider integration (OpenRouter and LM Studio), Gmail OAuth/API actions, privacy consent, session handling, Cloud Run configuration, and keyboard navigation shortcuts.
-- Automated test suite added in `test/server.test.js` (11/11 tests passing) covering endpoints, session lifecycles, CSRF protection, and error handling.
-- Server hardened for malformed URI/cookie edge cases and AI response markdown fence stripping.
-- Blocker for deployment: Google Cloud CLI requires interactive authentication (`gcloud auth login`) and project configuration before `gcloud builds submit` can run.
-- Next: Stand by to deploy when Cloud credentials/project are authenticated.
+- User steering: focus on building and polishing the product; deployment is later. Preserve Cloud Run compatibility.
+- Existing implementation includes responsive triage UI, seeded inbox, AI provider integration, Gmail OAuth/API actions, consent, encrypted session token storage for cloud mode, keyboard shortcuts, and Cloud Run config.
+- Existing Node test suite previously passed 11 tests. Primary agent is now tightening UX, round actions, and local demo behavior; rerun checks after changes.
+- Next: complete a full local triage/confirm/undo loop, review failure states and keyboard controls, then report only real credential-dependent integration limits.

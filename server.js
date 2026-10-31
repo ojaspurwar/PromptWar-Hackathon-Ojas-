@@ -158,7 +158,7 @@ function normalizeEmail(raw, index) {
   return { id:raw.id || `message-${index}`, sender:match ? match[1].replaceAll('"','').trim() : from || 'Unknown sender', email:match?.[2] || from, subject:header(headers,'subject') || '(no subject)', snippet:raw.snippet || body.slice(0,180), date:header(headers,'date'), unread:labels.includes('UNREAD'), important:labels.includes('IMPORTANT'), labels, body:body.slice(0,3000), avatar:(match ? match[1] : from).trim().slice(0,1).toUpperCase() || 'M' };
 }
 async function listGmailMessages(session) {
-  let result = await gmailFetch(session.tokens, 'messages?q=is%3Aunread&maxResults=12');
+  let result = await gmailFetch(session.tokens, `messages?q=${encodeURIComponent('in:inbox is:unread')}&maxResults=12`);
   session.tokens = result.tokens;
   const ids = result.data.messages || [];
   const rows = await Promise.all(ids.map(async ({ id }, index) => {
@@ -253,14 +253,17 @@ async function route(req, res) {
       const body = await readBody(req);
       if (!body.messageId || !['keep','archive','trash'].includes(body.action)) return json(res, 400, { error:'Choose a message and a valid action.' });
       const sessionId = id || newId(); if (!id) setSessionCookie(res, sessionId);
-      if (session.tokens && body.action !== 'keep') {
+      let mailboxApplied=false;
+      if (session.tokens) {
         const route = body.action === 'trash' ? `messages/${encodeURIComponent(body.messageId)}/trash` : `messages/${encodeURIComponent(body.messageId)}/modify`;
-        const options = body.action === 'trash' ? {method:'POST',body:'{}'} : {method:'POST',body:JSON.stringify({removeLabelIds:['INBOX']})};
-        const result = await gmailFetch(session.tokens, route, options); session.tokens = result.tokens; await saveSession(sessionId, session);
+        const removeLabelIds = body.action === 'keep' ? ['UNREAD'] : ['INBOX'];
+        const options = body.action === 'trash' ? {method:'POST',body:'{}'} : {method:'POST',body:JSON.stringify({removeLabelIds})};
+        const result = await gmailFetch(session.tokens, route, options); session.tokens = result.tokens; mailboxApplied=true;
       }
       const result = { messageId:body.messageId, action:body.action, timestamp:Date.now() };
       session.actions = [...(session.actions || []), result].slice(-30);
-      await saveSession(sessionId, session);
+      try { await saveSession(sessionId, session); }
+      catch(error) { if(mailboxApplied)return json(res,200,{ok:true,action:result,warning:'The Gmail action succeeded, but its game history could not be saved.'}); throw error; }
       return json(res, 200, { ok:true, action:result });
     } catch (e) { return json(res, 502, { error:e.message }); }
   }
@@ -269,12 +272,17 @@ async function route(req, res) {
       const body = await readBody(req), action = [...(session.actions || [])].reverse().find(a => a.messageId === body.messageId && !a.undone);
       if (!action) return json(res, 404, { error:'Nothing to undo for that message.' });
       const sessionId = id || newId(); if (!id) setSessionCookie(res, sessionId);
-      if (session.tokens && action.action !== 'keep') {
+      let mailboxUndone=false;
+      if (session.tokens) {
         const route = action.action === 'trash' ? `messages/${encodeURIComponent(action.messageId)}/untrash` : `messages/${encodeURIComponent(action.messageId)}/modify`;
-        const options = action.action === 'trash' ? {method:'POST',body:'{}'} : {method:'POST',body:JSON.stringify({addLabelIds:['INBOX']})};
-        const result = await gmailFetch(session.tokens, route, options); session.tokens = result.tokens;
+        const addLabelIds = action.action === 'keep' ? ['UNREAD'] : ['INBOX'];
+        const options = action.action === 'trash' ? {method:'POST',body:'{}'} : {method:'POST',body:JSON.stringify({addLabelIds})};
+        const result = await gmailFetch(session.tokens, route, options); session.tokens = result.tokens; mailboxUndone=true;
       }
-      action.undone = true; await saveSession(sessionId, session); return json(res, 200, {ok:true});
+      action.undone = true;
+      try { await saveSession(sessionId, session); }
+      catch(error) { if(mailboxUndone)return json(res,200,{ok:true,warning:'Gmail undo succeeded, but its game history could not be saved.'}); throw error; }
+      return json(res, 200, {ok:true});
     } catch (e) { return json(res, 502, { error:e.message }); }
   }
   if (req.method === 'GET' && url.pathname === '/auth/google') {
