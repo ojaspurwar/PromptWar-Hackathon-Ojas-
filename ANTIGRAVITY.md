@@ -28,7 +28,7 @@ Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup become
 - Check responsive layout and key keyboard interactions before handoff.
 
 ## Current Status
-- Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI provider integration (OpenRouter and LM Studio), confirmed mark-read/archive/trash actions, undo during a sprint and after reload, local day streak, and Player Level/XP progression (8 titles from Rookie to Inbox Legend).
+- Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI provider integration (OpenRouter and LM Studio), confirmed mark-read/archive/trash actions, undo during a sprint and after reload, local day streak, Player Level/XP progression (8 titles from Rookie to Inbox Legend), and direct triage action controls inside the full email detail modal.
 - Automated suite: 20 of 20 tests pass, covering endpoints, session/action lifecycle, Gmail action mapping, encryption, malformed model fallback, CSRF origin checks, local .env parsing, OAuth URL generation, LM Studio text-mode JSON triage, GET /api/ai/models discovery, and client-selected model overrides.
 - Port diagnostic: Detected Steam CEF remote debugging claiming `127.0.0.1:8080`. Server now detects loopback shadows and serves across all local interfaces; accessible at `http://127.0.0.2:8080` or `http://localhost:8080` (when Steam is closed).
 - Keyboard navigation: `J`/`K` moves and focuses messages, `E` archives, `W` keeps/marks read, `T` moves to Trash, `U` undoes, and Ctrl/Cmd+Enter confirms the action dialog while plain Enter honors the focused button.
