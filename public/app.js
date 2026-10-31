@@ -85,7 +85,7 @@ function awardXP(category,id,amount) {
   }
   return true;
 }
-const state = { messages:[], analyses:{}, mode:'demo', connected:false, account:null, configured:false, started:false, cardsAnimated:false, seconds:180, timer:null, selected:null, done:new Map(), pointsById:new Map(), correctById:new Map(), history:[], score:0, correct:0, decisions:0, xpTotal:readPlayerXP(), pending:null, provider:'openrouter', notice:null };
+const state = { messages:[], analyses:{}, mode:'demo', connected:false, account:null, configured:false, started:false, cardsAnimated:false, seconds:180, timer:null, selected:null, done:new Map(), pointsById:new Map(), correctById:new Map(), history:[], score:0, correct:0, decisions:0, xpTotal:readPlayerXP(), pending:null, provider:'openrouter', aiModel:null, lmStudioBaseUrl:null, notice:null };
 const reviewRequests = new Map();
 const avatarClasses = ['','violet','mint','peach','blue','gold','rose'];
 const icons = {
@@ -214,7 +214,7 @@ async function requestMessageReview(message) {
   $('#detail-ai-review').innerHTML='<div class="detail-ai-loading"><span class="ai-scanline"></span><strong>Reading with LM Studio</strong><p>Checking priority, context, and a safe next step…</p></div>';
   const request=(async()=>{
     try {
-      const result=await api('/api/triage',{method:'POST',body:JSON.stringify({messages:[message]})});
+      const result=await api('/api/triage',{method:'POST',body:JSON.stringify({messages:[message],model:state.aiModel || undefined})});
       const analysis=result.analyses?.[message.id];
       if(!analysis)throw new Error('The model returned no review for this message.');
       state.analyses[message.id]=analysis;
@@ -226,7 +226,7 @@ async function requestMessageReview(message) {
     } catch(error) {
       if(state.selected===message.id){
         $('#ai-status').textContent='OFFLINE';
-        $('#detail-ai-review').innerHTML=`<div class="detail-ai-empty detail-ai-error"><span>!</span><strong>Local model didn’t respond</strong><p>${escapeHtml(error.message)} Check that LM Studio is serving its model, then click this email again.</p></div>`;
+        $('#detail-ai-review').innerHTML=`<div class="detail-ai-empty detail-ai-error"><span>!</span><strong>AI model didn’t respond</strong><p>${escapeHtml(error.message)} Check the active provider, then click this email again.</p></div>`;
       }
     } finally { reviewRequests.delete(message.id); }
   })();
@@ -258,7 +258,7 @@ async function beginSprint() {
   if (state.started || !state.messages.length) return;
   const button = $('#start-button'); button.disabled = true; $('#start-label').textContent = 'Reading your inbox…'; $('#ai-status').textContent='THINKING';
   try {
-    const result = await api('/api/triage',{method:'POST',body:JSON.stringify({messages:state.messages,aiConsent:sessionStorage.getItem('inboxsprint_openrouter_consent')==='v1'})});
+    const result = await api('/api/triage',{method:'POST',body:JSON.stringify({messages:state.messages,model:state.aiModel || undefined,aiConsent:sessionStorage.getItem('inboxsprint_openrouter_consent')==='v1'})});
     state.analyses = result.analyses || {}; state.seconds = 180;
     if (result.notice) toast(result.notice);
     $('#ai-status').textContent = result.source === 'lmstudio' ? 'LM STUDIO' : result.source === 'demo' ? 'LOCAL RULES' : 'ANALYZED';
@@ -342,18 +342,29 @@ async function undoHistory(id) {
 async function loadInbox() {
   $('#mail-list').innerHTML='<div class="loading-state">Getting your inbox ready…</div>';
   try {
-    const config=await api('/api/config'); state.connected=config.connected; state.account=config.account; state.configured=config.gmailConfigured; state.provider=config.providerConfig.provider;
+    const config=await api('/api/config'); state.connected=config.connected; state.account=config.account; state.configured=config.gmailConfigured; state.provider=config.providerConfig.provider; state.lmStudioBaseUrl=config.providerConfig.lmStudioBaseUrl; let savedModel=null; try{savedModel=localStorage.getItem('inboxSprintAIModel');}catch{} state.aiModel=savedModel && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,179}$/.test(savedModel)?savedModel:config.providerConfig.model;
     const result=await api('/api/messages'); const progress=await api('/api/progress'); state.history=progress.actions||[]; state.messages=result.messages || []; state.mode=result.mode || 'demo'; state.analyses={}; state.done.clear(); state.pointsById.clear(); state.correctById.clear(); state.started=false; state.cardsAnimated=false; state.score=0; state.correct=0; state.decisions=0; state.selected=null;
     if (state.timer) clearInterval(state.timer); state.timer=null; state.seconds=180; $('.timer-ring').classList.remove('timer-danger'); $('#timer-text').textContent='03:00'; $('#timer-progress').style.strokeDashoffset='0'; $('#timer-progress').style.stroke='#00d2ff'; $('#ai-status').textContent='READY';
     render();
   } catch(error) { $('#mail-list').innerHTML=`<div class="empty-state">${escapeHtml(error.message)} <button id="retry-load">Try again</button></div>`; $('#retry-load')?.addEventListener('click',loadInbox); }
 }
 function openDialog(id) { $(id).showModal(); }
+async function refreshAIModelList() {
+  const status=$('#ai-model-state'); status.textContent='Checking LM Studio…';
+  try {
+    const result=await api('/api/ai/models'), list=$('#installed-ai-models');
+    list.replaceChildren(...(result.models||[]).map(model=>{const option=document.createElement('option');option.value=model;return option;}));
+    status.textContent=result.available?`${result.models.length} installed model${result.models.length===1?'':'s'} found`:'Model list unavailable · enter an ID';
+  } catch { status.textContent='Could not load models · enter an ID'; }
+}
 $('#start-button').addEventListener('click',startSprint);
 $('#refresh-button').addEventListener('click',loadInbox);
 $('#reset-round').addEventListener('click',loadInbox);
 $('#help-button').addEventListener('click',()=>openDialog('#help-dialog'));
-$('#ai-settings').addEventListener('click',async()=>{$('#mail-detail-dialog').close();try{const c=await api('/api/config'),p=c.providerConfig,localActive=p.provider==='lmstudio';$('#openrouter-state').textContent=localActive?'Standby — LM Studio is selected':p.openrouterReady?'API key configured':'No API key configured — smart demo scoring is active';$('#provider-badge').textContent=localActive?'STANDBY':p.provider.toUpperCase();$('#lmstudio-state').textContent=localActive?`Selected: ${p.lmStudioModel} · ${p.lmStudioBaseUrl}`:'Available for local development';$('#lmstudio-badge').textContent=localActive?'ACTIVE':'LOCAL';}catch{$('#openrouter-state').textContent='Connection status unavailable';$('#lmstudio-state').textContent='Connection status unavailable';}openDialog('#settings-dialog');});
+$('#ai-settings').addEventListener('click',async()=>{$('#mail-detail-dialog').close();try{const c=await api('/api/config'),p=c.providerConfig,localActive=p.provider==='lmstudio';$('#openrouter-state').textContent=localActive?'Standby — LM Studio is selected':p.openrouterReady?'API key configured':'No API key configured — smart demo scoring is active';$('#provider-badge').textContent=localActive?'STANDBY':p.provider.toUpperCase();$('#lmstudio-state').textContent=localActive?`Selected: ${state.aiModel||p.model} · ${p.lmStudioBaseUrl}`:'Available for local development';$('#lmstudio-badge').textContent=localActive?'ACTIVE':'LOCAL';$('#ai-model-input').value=state.aiModel||p.model;}catch{$('#openrouter-state').textContent='Connection status unavailable';$('#lmstudio-state').textContent='Connection status unavailable';$('#ai-model-input').value=state.aiModel||'';}openDialog('#settings-dialog');void refreshAIModelList();});
+$('#refresh-ai-models').addEventListener('click',refreshAIModelList);
+$('#ai-model-input').addEventListener('keydown',event=>{if(event.key==='Enter')event.preventDefault();});
+$('#save-ai-model').addEventListener('click',()=>{const model=$('#ai-model-input').value.trim();if(!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,179}$/.test(model)){toast('Enter a valid model ID.','error');return;}state.aiModel=model;try{localStorage.setItem('inboxSprintAIModel',model);}catch{}state.analyses={};reviewRequests.clear();$('#ai-model-state').textContent='Saved in this browser';if(state.provider==='lmstudio')$('#lmstudio-state').textContent=`Selected: ${model} · ${state.lmStudioBaseUrl}`;$('#ai-status').textContent='MODEL SET';toast(`AI model set to ${model}. New email reviews will use it.`,'success');});
 $('#detail-close').addEventListener('click',()=>$('#mail-detail-dialog').close());
 $('#mail-detail-dialog').addEventListener('close',()=>{const id=state.selected;if(id)$(`.mail-card[data-id="${CSS.escape(id)}"] .mail-subject`)?.focus({preventScroll:true});});
 $('#action-dialog').addEventListener('close',()=>{if($('#action-dialog').returnValue==='confirm')confirmPending();else state.pending=null;});

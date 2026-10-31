@@ -311,10 +311,41 @@ test('Unit: LM Studio triage calls the configured local model and accepts text-m
 });
 
 test('GET /api/ai/models returns available models for the active provider', async () => {
-  const res = await fetch(`${baseUrl}/api/ai/models`);
-  assert.equal(res.status, 200);
-  const data = await res.json();
-  assert.ok(Array.isArray(data.models));
-  assert.ok(typeof data.provider === 'string');
+  const oldProvider=process.env.AI_PROVIDER;
+  process.env.AI_PROVIDER='openrouter';
+  try {
+    const res = await fetch(`${baseUrl}/api/ai/models`);
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.deepEqual(data.models,[process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini']);
+    assert.equal(data.provider,'openrouter');
+  } finally { if(oldProvider===undefined)delete process.env.AI_PROVIDER; else process.env.AI_PROVIDER=oldProvider; }
+});
+
+test('POST /api/triage uses the model selected in AI settings', async () => {
+  const saved=Object.fromEntries(['AI_PROVIDER','LM_STUDIO_BASE_URL','LM_STUDIO_MODEL'].map(key=>[key,process.env[key]]));
+  const realFetch=global.fetch;
+  let request;
+  process.env.AI_PROVIDER='lmstudio';
+  process.env.LM_STUDIO_BASE_URL='http://local-model.test/v1';
+  process.env.LM_STUDIO_MODEL='default-model';
+  global.fetch=async(url,options)=>{
+    if(String(url).startsWith('http://local-model.test/')){
+      request={url,body:JSON.parse(options.body)};
+      return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({emails:[{id:'chosen-1',importance:'medium',score:0.6,summary:'A useful update.',reason:'No deadline found.',suggestedAction:'keep'}]})}}]}),{status:200});
+    }
+    return realFetch(url,options);
+  };
+  try {
+    const response=await realFetch(`${baseUrl}/api/triage`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model:'selected-model',messages:[{id:'chosen-1',subject:'Model selection check'}]})});
+    assert.equal(response.status,200);
+    const result=await response.json();
+    assert.equal(result.source,'lmstudio');
+    assert.equal(request.body.model,'selected-model');
+    assert.equal(request.url,'http://local-model.test/v1/chat/completions');
+  } finally {
+    global.fetch=realFetch;
+    for(const [key,value] of Object.entries(saved))if(value===undefined)delete process.env[key];else process.env[key]=value;
+  }
 });
 
