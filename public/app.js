@@ -1,13 +1,5 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const aiDockBreakpoint = matchMedia('(min-width: 901px)');
-function placeAIReview() {
-  const card = $('.ai-card');
-  const dock = $(aiDockBreakpoint.matches ? '#ai-sidebar-dock' : '#ai-inbox-dock');
-  if (card && dock && card.parentElement !== dock) dock.append(card);
-}
-placeAIReview();
-aiDockBreakpoint.addEventListener('change', placeAIReview);
 let anime = null;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 import('https://esm.sh/animejs@4.1.3').then(module => { anime = module?.animate ? module : (module?.default?.animate ? module.default : module); }).catch(() => {});
@@ -180,7 +172,7 @@ function render() {
   }).join('');
   if(state.started && state.done.size===0 && !state.cardsAnimated) { state.cardsAnimated=true; animateTo($$('.mail-card'),{duration:650,delay:anime?.stagger?anime.stagger(65):65}); }
   $$('.mail-card').forEach(card => {
-    card.addEventListener('click', e => { if (e.target.closest('[data-action]')) return; selectMessage(card.dataset.id); });
+    card.addEventListener('click', e => { if (e.target.closest('[data-action]')) return; selectMessage(card.dataset.id,{openDetails:true}); });
   });
   $$('[data-action]',list).forEach(button => button.addEventListener('click', e => { e.stopPropagation(); handleAction(button.closest('.mail-card').dataset.id,button.dataset.action); }));
   renderStats();
@@ -199,17 +191,34 @@ function renderStats() {
   const done = state.messages.length > 0 && state.done.size === state.messages.length;
   if (done) { $('#start-label').textContent = 'Sprint complete'; $('#ai-status').textContent = 'COMPLETE'; recordCompletedSprint(); }
 }
-function selectMessage(id) {
+function renderMessageDetail(message, analysis) {
+  $('#detail-avatar').textContent=message.avatar || message.sender?.slice(0,1) || '?';
+  $('#detail-sender').textContent=message.sender || 'Unknown sender';
+  $('#detail-email').textContent=message.email || '';
+  $('#detail-date').textContent=formatDate(message.date) || '';
+  $('#detail-subject').textContent=message.subject || '(no subject)';
+  $('#detail-body').textContent=message.body || message.snippet || 'No message body is available.';
+  const review=$('#detail-ai-review');
+  if (!analysis) {
+    review.innerHTML='<div class="detail-ai-empty"><span>✳</span><strong>AI review is waiting</strong><p>Start your sprint to get a priority, a short explanation, and a suggested next step for this message.</p></div>';
+    return;
+  }
+  const priority=escapeHtml(analysis.importance || 'medium');
+  review.innerHTML=`<div class="detail-review-content"><div class="detail-priority-row"><span>PRIORITY</span><span class="priority-tag ${priority}"><i class="small-dot"></i>${priority.toUpperCase()}</span></div><div class="detail-review-block"><small>QUICK SUMMARY</small><p>${escapeHtml(analysis.summary || 'No summary available.')}</p></div><div class="detail-review-block"><small>WHY IT MATTERS</small><p>${escapeHtml(analysis.reason || 'No additional context available.')}</p></div><div class="detail-next-step"><span>✳</span><div><small>SUGGESTED NEXT STEP</small><strong>${analysis.suggestedAction==='archive'?'Archive':'Keep in inbox'}</strong></div></div></div>`;
+}
+function selectMessage(id, {openDetails=false} = {}) {
   state.selected = id;
   const message = state.messages.find(m => m.id === id), analysis = state.analyses[id];
   if (!message) return;
   if(state.started) awardXP('read',id,5);
   render();
+  renderMessageDetail(message,analysis);
+  const detailDialog=$('#mail-detail-dialog');
+  if(openDetails && !detailDialog.open) detailDialog.showModal();
+  if(detailDialog.open) { $('#detail-close').focus({preventScroll:true}); return; }
   const subjectButton=$(`.mail-card[data-id="${CSS.escape(id)}"] .mail-subject`);
   subjectButton?.focus({preventScroll:true});
   subjectButton?.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
-  if (!analysis) { $('#ai-summary').innerHTML = `<div class="summary-content"><div class="summary-head"><span>PREVIEW</span></div><small class="summary-address">${escapeHtml(message.email || '')}</small><strong>${escapeHtml(message.subject)}</strong><p>${escapeHtml(message.snippet || message.body || '')}</p></div>`; return; }
-  $('#ai-summary').innerHTML = `<div class="summary-content"><div class="summary-head"><span>MESSAGE SUMMARY</span><span class="priority-tag ${analysis.importance}"><i class="small-dot"></i>${escapeHtml(analysis.importance.toUpperCase())}</span></div><strong>${escapeHtml(message.subject)}</strong><p>${escapeHtml(analysis.summary)}</p><p><b>Why:</b> ${escapeHtml(analysis.reason)}</p><div class="summary-head"><span>AI SUGGESTS</span><b>${analysis.suggestedAction === 'archive' ? 'Archive' : 'Keep'}</b></div></div>`;
 }
 async function startSprint() {
   if (!state.started && state.connected && state.provider === 'openrouter' && sessionStorage.getItem('inboxsprint_openrouter_consent') !== 'v1') {
@@ -284,7 +293,7 @@ async function applyAction(message,action) {
     const scoreCard=$('.score-card'); scoreCard.classList.remove('score-pop'); void scoreCard.offsetWidth; scoreCard.classList.add('score-pop');
     render();
     toast(result.warning || (action === 'keep' ? 'Marked as read and kept in your inbox.' : action === 'archive' ? 'Archived. One less thing in your inbox.' : 'Moved to Trash.'),result.warning ? '' : 'success');
-    if (state.done.size === state.messages.length) { if (state.timer) clearInterval(state.timer); state.timer=null; $('#ai-status').textContent='COMPLETE'; $('#ai-summary').innerHTML='<div class="summary-placeholder"><span class="placeholder-icon">✦</span><p>Inbox reset complete. You cleared the noise and kept the signal.</p></div>'; $('#ai-summary').focus({preventScroll:true}); recordCompletedSprint(); $('#overlay-kicker').textContent='ROUND CLEARED'; $('#overlay-count').textContent='✦'; $('#overlay-caption').textContent=`${state.score} points · inbox reset`; $('#game-overlay').classList.add('active','victory'); $('#game-overlay').setAttribute('aria-hidden','false'); burstConfetti(); setTimeout(()=>{$('#game-overlay').classList.remove('active','victory');$('#game-overlay').setAttribute('aria-hidden','true');},1900); }
+    if (state.done.size === state.messages.length) { if (state.timer) clearInterval(state.timer); state.timer=null; $('#ai-status').textContent='COMPLETE'; recordCompletedSprint(); $('#overlay-kicker').textContent='ROUND CLEARED'; $('#overlay-count').textContent='✦'; $('#overlay-caption').textContent=`${state.score} points · inbox reset`; $('#game-overlay').classList.add('active','victory'); $('#game-overlay').setAttribute('aria-hidden','false'); burstConfetti(); setTimeout(()=>{$('#game-overlay').classList.remove('active','victory');$('#game-overlay').setAttribute('aria-hidden','true');},1900); }
     if (state.selected === message.id) { const next=state.messages.find(m=>!state.done.has(m.id)); if (next) selectMessage(next.id); }
   } catch(error) { toast(error.message,'error'); if(button) button.disabled=false; }
 }
@@ -316,7 +325,9 @@ $('#start-button').addEventListener('click',startSprint);
 $('#refresh-button').addEventListener('click',loadInbox);
 $('#reset-round').addEventListener('click',loadInbox);
 $('#help-button').addEventListener('click',()=>openDialog('#help-dialog'));
-$('#ai-settings').addEventListener('click',async()=>{try{const c=await api('/api/config');$('#openrouter-state').textContent=c.providerConfig.openrouterReady?'API key configured':'No API key configured — smart demo scoring is active';$('#provider-badge').textContent=c.providerConfig.provider.toUpperCase();}catch{$('#openrouter-state').textContent='Connection status unavailable';}openDialog('#settings-dialog');});
+$('#ai-settings').addEventListener('click',async()=>{$('#mail-detail-dialog').close();try{const c=await api('/api/config');$('#openrouter-state').textContent=c.providerConfig.openrouterReady?'API key configured':'No API key configured — smart demo scoring is active';$('#provider-badge').textContent=c.providerConfig.provider.toUpperCase();}catch{$('#openrouter-state').textContent='Connection status unavailable';}openDialog('#settings-dialog');});
+$('#detail-close').addEventListener('click',()=>$('#mail-detail-dialog').close());
+$('#mail-detail-dialog').addEventListener('close',()=>{const id=state.selected;if(id)$(`.mail-card[data-id="${CSS.escape(id)}"] .mail-subject`)?.focus({preventScroll:true});});
 $('#action-dialog').addEventListener('close',()=>{if($('#action-dialog').returnValue==='confirm')confirmPending();else state.pending=null;});
 $('#external-consent-check').addEventListener('change',e=>{$('#consent-confirm').disabled=!e.target.checked;});
 $('#external-consent-dialog').addEventListener('close',()=>{if($('#external-consent-dialog').returnValue==='consent'&&$('#external-consent-check').checked){sessionStorage.setItem('inboxsprint_openrouter_consent','v1');beginSprint();}});
