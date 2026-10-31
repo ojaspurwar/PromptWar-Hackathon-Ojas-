@@ -87,6 +87,7 @@ function awardXP(category,id,amount) {
 }
 const state = { messages:[], analyses:{}, mode:'demo', connected:false, account:null, configured:false, started:false, cardsAnimated:false, seconds:180, timer:null, selected:null, done:new Map(), pointsById:new Map(), correctById:new Map(), history:[], score:0, correct:0, decisions:0, xpTotal:readPlayerXP(), pending:null, provider:'openrouter', aiModel:null, lmStudioBaseUrl:null, notice:null };
 const reviewRequests = new Map();
+let reviewQueue = Promise.resolve();
 const avatarClasses = ['','violet','mint','peach','blue','gold','rose'];
 const icons = {
   archive:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6"/></svg>',
@@ -171,7 +172,7 @@ function render() {
       <div class="mail-actions" aria-label="Email actions">${done ? `<button class="mail-action" data-action="undo" title="Undo action" aria-label="Undo action">↶</button>` : `<button class="mail-action keep" data-action="keep" title="Keep and mark reviewed" aria-label="Keep and mark reviewed">${icons.keep}</button><button class="mail-action archive" data-action="archive" title="Archive" aria-label="Archive">${icons.archive}</button><button class="mail-action trash" data-action="trash" title="Move to trash" aria-label="Move to trash">${icons.trash}</button>`}</div>
     </article>`;
   }).join('');
-  if(state.started && state.done.size===0 && !state.cardsAnimated) { state.cardsAnimated=true; animateTo($$('.mail-card'),{duration:650,delay:anime?.stagger?anime.stagger(65):65}); }
+  if(state.started && state.done.size===0 && !state.cardsAnimated) { state.cardsAnimated=true; animateTo($$('.mail-card'),{duration:430,delay:anime?.stagger?anime.stagger(36):36}); }
   $$('.mail-card').forEach(card => {
     card.addEventListener('click', e => { if (e.target.closest('[data-action]')) return; selectMessage(card.dataset.id,{openDetails:true}); });
   });
@@ -190,7 +191,7 @@ function renderStats() {
   $('#points-value').textContent = state.score;
   $('#accuracy-value').textContent = state.decisions ? `${Math.round(state.correct/state.decisions*100)}%` : '—';
   const done = state.messages.length > 0 && state.done.size === state.messages.length;
-  if (done) { $('#start-label').textContent = 'Sprint complete'; $('#ai-status').textContent = 'COMPLETE'; recordCompletedSprint(); }
+  if (done) { $('#start-label').textContent = state.started?'Sprint complete':'Inbox cleared'; $('#ai-status').textContent = 'COMPLETE'; if(state.started)recordCompletedSprint(); }
 }
 function renderMessageDetail(message, analysis) {
   $('#detail-avatar').textContent=message.avatar || message.sender?.slice(0,1) || '?';
@@ -199,6 +200,8 @@ function renderMessageDetail(message, analysis) {
   $('#detail-date').textContent=formatDate(message.date) || '';
   $('#detail-subject').textContent=message.subject || '(no subject)';
   $('#detail-body').textContent=message.body || message.snippet || 'No message body is available.';
+  const handled=state.done.has(message.id);
+  $$('[data-detail-action]').forEach(button=>{button.disabled=handled;button.setAttribute('aria-disabled',String(handled));});
   const review=$('#detail-ai-review');
   if (!analysis) {
     review.innerHTML='<div class="detail-ai-empty"><span>✳</span><strong>AI review is waiting</strong><p>Start your sprint to get a priority, a short explanation, and a suggested next step for this message.</p></div>';
@@ -212,7 +215,7 @@ async function requestMessageReview(message) {
   if (reviewRequests.has(message.id)) return reviewRequests.get(message.id);
   $('#ai-status').textContent='READING';
   $('#detail-ai-review').innerHTML='<div class="detail-ai-loading"><span class="ai-scanline"></span><strong>Reading with LM Studio</strong><p>Checking priority, context, and a safe next step…</p></div>';
-  const request=(async()=>{
+  const request=reviewQueue.then(async()=>{
     try {
       const result=await api('/api/triage',{method:'POST',body:JSON.stringify({messages:[message],model:state.aiModel || undefined})});
       const analysis=result.analyses?.[message.id];
@@ -229,16 +232,19 @@ async function requestMessageReview(message) {
         $('#detail-ai-review').innerHTML=`<div class="detail-ai-empty detail-ai-error"><span>!</span><strong>AI model didn’t respond</strong><p>${escapeHtml(error.message)} Check the active provider, then click this email again.</p></div>`;
       }
     } finally { reviewRequests.delete(message.id); }
-  })();
+  });
+  reviewQueue=request.catch(()=>{});
   reviewRequests.set(message.id,request);
   return request;
 }
 function selectMessage(id, {openDetails=false} = {}) {
+  const previous=state.selected;
   state.selected = id;
   const message = state.messages.find(m => m.id === id), analysis = state.analyses[id];
   if (!message) return;
   if(state.started) awardXP('read',id,5);
-  render();
+  if(previous && previous!==id){const previousCard=$(`.mail-card[data-id="${CSS.escape(previous)}"]`);previousCard?.classList.remove('selected');previousCard?.querySelector('.mail-subject')?.setAttribute('aria-pressed','false');}
+  const selectedCard=$(`.mail-card[data-id="${CSS.escape(id)}"]`);selectedCard?.classList.add('selected');selectedCard?.querySelector('.mail-subject')?.setAttribute('aria-pressed','true');
   renderMessageDetail(message,analysis);
   const detailDialog=$('#mail-detail-dialog');
   if(openDetails && !detailDialog.open) detailDialog.showModal();
@@ -258,14 +264,17 @@ async function beginSprint() {
   if (state.started || !state.messages.length) return;
   const button = $('#start-button'); button.disabled = true; $('#start-label').textContent = 'Reading your inbox…'; $('#ai-status').textContent='THINKING';
   try {
-    const result = await api('/api/triage',{method:'POST',body:JSON.stringify({messages:state.messages,model:state.aiModel || undefined,aiConsent:sessionStorage.getItem('inboxsprint_openrouter_consent')==='v1'})});
-    state.analyses = result.analyses || {}; state.seconds = 180;
+    if(reviewRequests.size)await Promise.allSettled([...reviewRequests.values()]);
+    const unanalyzed=state.messages.filter(message=>!state.analyses[message.id]);
+    let result={source:state.provider};
+    if(unanalyzed.length){result=await api('/api/triage',{method:'POST',body:JSON.stringify({messages:unanalyzed,model:state.aiModel || undefined,aiConsent:sessionStorage.getItem('inboxsprint_openrouter_consent')==='v1'})});state.analyses={...state.analyses,...(result.analyses||{})};}
+    state.seconds = 180;
     if (result.notice) toast(result.notice);
     $('#ai-status').textContent = result.source === 'lmstudio' ? 'LM STUDIO' : result.source === 'demo' ? 'LOCAL RULES' : 'ANALYZED';
     await showCountdown(); state.started=true; state.cardsAnimated=true; state.timer = setInterval(tick,1000); render();
     if (state.messages[0]) selectMessage(state.messages.find(m => !state.done.has(m.id))?.id || state.messages[0].id);
-    animateTo($$('.mail-card'),{duration:650,delay:anime?.stagger?anime.stagger(65):65});
-    animateTo('.focus-card',{duration:550,opacity:[0,1],translateY:[16,0],scale:[.94,1]});
+    animateTo($$('.mail-card'),{duration:430,delay:anime?.stagger?anime.stagger(36):36});
+    animateTo('.focus-card',{duration:400,opacity:[0,1],translateY:[16,0],scale:[.94,1]});
   } catch (error) { $('#ai-status').textContent='READY'; toast(error.message,'error'); }
   finally { button.disabled = false; }
 }
@@ -279,7 +288,6 @@ function tick() {
   if (state.seconds <= 0) { clearInterval(state.timer); state.timer = null; toast('Time is up — finish the remaining messages at your own pace.',''); }
 }
 function handleAction(id, action) {
-  if (!state.started) { toast('Start your sprint to review AI summaries before choosing an action.'); return; }
   if (action === 'undo') return undoAction(id);
   const message = state.messages.find(m => m.id === id);
   if (!message || state.done.has(id)) return;
@@ -307,21 +315,24 @@ async function applyAction(message,action) {
     const card=$(`.mail-card[data-id="${CSS.escape(message.id)}"]`);
     if(card && !reducedMotion) {
       try {
-        if(anime?.animate) await new Promise(resolve=>anime.animate(card,{translateX:action==='trash'?180:action==='keep'?-120:0,translateY:action==='archive'?90:0,rotate:action==='trash'?8:action==='keep'?-5:0,scale:.78,opacity:0,duration:420,ease:'in(3)',onComplete:resolve}));
-        else await card.animate([{transform:'scale(1)',opacity:1},{transform:'translateY(36px) scale(.86)',opacity:0}],{duration:340,easing:'ease-in',fill:'forwards'}).finished.catch(()=>{});
+        if(anime?.animate) await new Promise(resolve=>anime.animate(card,{translateX:action==='trash'?180:action==='keep'?-120:0,translateY:action==='archive'?90:0,rotate:action==='trash'?8:action==='keep'?-5:0,scale:.78,opacity:0,duration:250,ease:'in(3)',onComplete:resolve}));
+        else await card.animate([{transform:'scale(1)',opacity:1},{transform:'translateY(36px) scale(.86)',opacity:0}],{duration:220,easing:'ease-in',fill:'forwards'}).finished.catch(()=>{});
       } catch (motionError) { console.warn('Action animation skipped:',motionError); }
     }
     const suggestion = state.analyses[message.id]?.suggestedAction;
     awardXP('actions',message.id,10);
-    const correct = action === 'keep' ? suggestion !== 'archive' : action === 'archive' ? suggestion === 'archive' : false;
-    const points = action === 'keep' && suggestion === 'keep' || action === 'archive' && suggestion === 'archive' ? 10 : action === 'trash' ? 3 : 5;
-    state.decisions++; if (correct) state.correct++;
-    state.score += points; state.pointsById.set(message.id,points); state.correctById.set(message.id,correct);
+    if(state.started){
+      const correct = action === 'keep' ? suggestion !== 'archive' : action === 'archive' ? suggestion === 'archive' : false;
+      const points = action === 'keep' && suggestion === 'keep' || action === 'archive' && suggestion === 'archive' ? 10 : action === 'trash' ? 3 : 5;
+      state.decisions++; if (correct) state.correct++;
+      state.score += points; state.pointsById.set(message.id,points); state.correctById.set(message.id,correct);
+      const scoreCard=$('.score-card'); scoreCard.classList.remove('score-pop'); void scoreCard.offsetWidth; scoreCard.classList.add('score-pop');
+    }
     state.done.set(message.id,action);
-    const scoreCard=$('.score-card'); scoreCard.classList.remove('score-pop'); void scoreCard.offsetWidth; scoreCard.classList.add('score-pop');
     render();
+    if(state.selected===message.id)renderMessageDetail(message,state.analyses[message.id]);
     toast(result.warning || (action === 'keep' ? 'Marked as read and kept in your inbox.' : action === 'archive' ? 'Archived. One less thing in your inbox.' : 'Moved to Trash.'),result.warning ? '' : 'success');
-    if (state.done.size === state.messages.length) { if (state.timer) clearInterval(state.timer); state.timer=null; $('#ai-status').textContent='COMPLETE'; recordCompletedSprint(); $('#overlay-kicker').textContent='ROUND CLEARED'; $('#overlay-count').textContent='✦'; $('#overlay-caption').textContent=`${state.score} points · inbox reset`; $('#game-overlay').classList.add('active','victory'); $('#game-overlay').setAttribute('aria-hidden','false'); burstConfetti(); setTimeout(()=>{$('#game-overlay').classList.remove('active','victory');$('#game-overlay').setAttribute('aria-hidden','true');},1900); }
+    if (state.done.size === state.messages.length && state.started) { if (state.timer) clearInterval(state.timer); state.timer=null; $('#ai-status').textContent='COMPLETE'; recordCompletedSprint(); $('#overlay-kicker').textContent='ROUND CLEARED'; $('#overlay-count').textContent='✦'; $('#overlay-caption').textContent=`${state.score} points · inbox reset`; $('#game-overlay').classList.add('active','victory'); $('#game-overlay').setAttribute('aria-hidden','false'); burstConfetti(); setTimeout(()=>{$('#game-overlay').classList.remove('active','victory');$('#game-overlay').setAttribute('aria-hidden','true');},1900); }
     if (state.selected === message.id) { const next=state.messages.find(m=>!state.done.has(m.id)); if (next) selectMessage(next.id); }
   } catch(error) { toast(error.message,'error'); if(button) button.disabled=false; }
 }
@@ -367,6 +378,7 @@ $('#ai-model-input').addEventListener('keydown',event=>{if(event.key==='Enter')e
 $('#save-ai-model').addEventListener('click',()=>{const model=$('#ai-model-input').value.trim();if(!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,179}$/.test(model)){toast('Enter a valid model ID.','error');return;}state.aiModel=model;try{localStorage.setItem('inboxSprintAIModel',model);}catch{}state.analyses={};reviewRequests.clear();$('#ai-model-state').textContent='Saved in this browser';if(state.provider==='lmstudio')$('#lmstudio-state').textContent=`Selected: ${model} · ${state.lmStudioBaseUrl}`;$('#ai-status').textContent='MODEL SET';toast(`AI model set to ${model}. New email reviews will use it.`,'success');});
 $('#detail-close').addEventListener('click',()=>$('#mail-detail-dialog').close());
 $('#mail-detail-dialog').addEventListener('close',()=>{const id=state.selected;if(id)$(`.mail-card[data-id="${CSS.escape(id)}"] .mail-subject`)?.focus({preventScroll:true});});
+$$('[data-detail-action]').forEach(button=>button.addEventListener('click',()=>{if(state.selected)handleAction(state.selected,button.dataset.detailAction);}));
 $('#action-dialog').addEventListener('close',()=>{if($('#action-dialog').returnValue==='confirm')confirmPending();else state.pending=null;});
 $('#external-consent-check').addEventListener('change',e=>{$('#consent-confirm').disabled=!e.target.checked;});
 $('#external-consent-dialog').addEventListener('close',()=>{if($('#external-consent-dialog').returnValue==='consent'&&$('#external-consent-check').checked){sessionStorage.setItem('inboxsprint_openrouter_consent','v1');beginSprint();}});
