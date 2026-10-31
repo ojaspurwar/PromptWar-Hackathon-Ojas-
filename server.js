@@ -371,6 +371,17 @@ async function route(req, res) {
 }
 const server = http.createServer((req,res) => route(req,res).catch(error => { console.error('Request error:',error); json(res,500,{error:error.message || 'Something went wrong.'}); }));
 if (require.main === module) {
-  server.listen(PORT,'0.0.0.0',() => console.log(`Inbox Sprint listening on ${PORT}`));
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Inbox Sprint listening on ${PORT}`);
+    const check = http.get(`http://127.0.0.1:${PORT}/healthz`, (res) => {
+      if (res.statusCode !== 200) {
+        console.warn(`\n[NOTICE] Port ${PORT} on 127.0.0.1 is claimed by another process (e.g. Steam CEF debugging).`);
+        console.warn(`If http://localhost:${PORT} does not load Inbox Sprint, open:\n  -> http://127.0.0.2:${PORT}\n`);
+      }
+    });
+    check.on('error', () => {
+      console.warn(`\n[NOTICE] 127.0.0.1:${PORT} is not directly reachable. Access Inbox Sprint at:\n  -> http://127.0.0.2:${PORT}\n`);
+    });
+  });
 }
 module.exports = { server, route, normalizeEmail, fallbackTriage, modelTriage, gmailActionOperation, parseCookies, sign, readSessionId, encrypt, decrypt, loadLocalEnv, authorizationUrl };
