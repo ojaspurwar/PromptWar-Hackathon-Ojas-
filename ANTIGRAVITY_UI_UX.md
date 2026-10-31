@@ -80,11 +80,11 @@ Open `http://localhost:8080` after starting the server. Do not claim visual revi
 ## Status
 
 **Code review and browser visual review complete.**
-- Full-page start state and active gameplay verified in live browser session (`Screenshot 2026-10-31 151335.png` and `Screenshot 2026-10-31 150600.png`).
-- Retro arcade palette, typography (`Press Start 2P`, `Space Mono`), daily reset banner, streak tracker, circular timer ring, and HUD layout all verified pixel-perfect.
+- Full-page start state, active gameplay, and docked layout verified across multiple live browser sessions (`Screenshot 2026-10-31 152225.png`, `Screenshot 2026-10-31 151335.png`, and `Screenshot 2026-10-31 150600.png`).
+- Retro arcade palette, typography (`Press Start 2P`, `Space Mono`), daily reset banner, streak tracker, circular timer ring, and balanced 3-column layout all verified pixel-perfect.
+- AI Co-pilot card docks responsively in left sidebar under navigation on desktop (`≥901px`), previewing sender, subject, importance, and suggested actions without obstructing gameplay.
 - Active card selection displays electric cyan neon frame (`#00d2ff`), action buttons (Keep/Archive/Trash), and message snippet.
 - Completed cards display distinct status badges (`Archived`, `Kept`, `High priority`, `Low priority`) and inline action history.
-- AI Co-pilot panel displays real-time importance rationale, message summary, and action recommendation (`AI SUGGESTS KEEP`).
 - Real-time sprint scoring (`30 pts`, `50% accuracy`) and Player Level XP progression (`LV 1 Rookie`, `65 / 150 XP`) validated with live gameplay.
 - Anime.js dynamic loader in `public/app.js` with fallback to native Web Animations API verified functional.
 - Port diagnostic active: Steam CEF remote debugging claims `127.0.0.1:8080`; app accessible on `http://127.0.0.2:8080`.
