@@ -1,7 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
-const { server, parseCookies, sign, encrypt, decrypt, normalizeEmail, fallbackTriage, modelTriage, gmailActionOperation } = require('../server.js');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { server, parseCookies, sign, encrypt, decrypt, normalizeEmail, fallbackTriage, modelTriage, gmailActionOperation, loadLocalEnv, authorizationUrl } = require('../server.js');
 
 let baseUrl;
 let testServer;
@@ -151,6 +154,45 @@ test('Unit: parseCookies handles standard and malformed cookies gracefully', () 
   assert.equal(parsed.foo, 'bar');
   assert.equal(parsed.session, 'abc 123');
   assert.equal(parsed.malformed, '%ff');
+});
+
+test('Unit: local env file loads values without overriding the process environment', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'inbox-sprint-env-'));
+  const file = path.join(dir, '.env');
+  const loadedKey = `INBOX_SPRINT_ENV_TEST_${process.pid}`;
+  const existingKey = `${loadedKey}_EXISTING`;
+  process.env[existingKey] = 'from-process';
+  try {
+    fs.writeFileSync(file, `${loadedKey}="local value"\n${existingKey}=from-file\n# ignored\n`);
+    loadLocalEnv(file);
+    assert.equal(process.env[loadedKey], 'local value');
+    assert.equal(process.env[existingKey], 'from-process');
+  } finally {
+    delete process.env[loadedKey];
+    delete process.env[existingKey];
+    fs.rmSync(dir, { recursive:true, force:true });
+  }
+});
+
+test('Unit: Gmail OAuth URL uses the configured callback, offline access, and Gmail modify scope', () => {
+  const keys = ['GOOGLE_CLIENT_ID','GOOGLE_REDIRECT_URI','APP_BASE_URL'];
+  const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  try {
+    process.env.GOOGLE_CLIENT_ID = 'oauth-client-test';
+    process.env.GOOGLE_REDIRECT_URI = 'http://localhost:8080/auth/callback';
+    process.env.APP_BASE_URL = 'http://localhost:8080';
+    const url = new URL(authorizationUrl('state-test'));
+    assert.equal(url.origin, 'https://accounts.google.com');
+    assert.equal(url.pathname, '/o/oauth2/v2/auth');
+    assert.equal(url.searchParams.get('client_id'), 'oauth-client-test');
+    assert.equal(url.searchParams.get('redirect_uri'), 'http://localhost:8080/auth/callback');
+    assert.equal(url.searchParams.get('access_type'), 'offline');
+    assert.equal(url.searchParams.get('include_granted_scopes'), 'true');
+    assert.ok(url.searchParams.get('scope').includes('https://www.googleapis.com/auth/gmail.modify'));
+    assert.equal(url.searchParams.get('state'), 'state-test');
+  } finally {
+    for (const key of keys) if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key];
+  }
 });
 
 test('Unit: sign and signature verification', () => {

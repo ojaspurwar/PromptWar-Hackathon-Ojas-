@@ -153,7 +153,7 @@ function selectMessage(id) {
   const subjectButton=$(`.mail-card[data-id="${CSS.escape(id)}"] .mail-subject`);
   subjectButton?.focus({preventScroll:true});
   subjectButton?.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
-  if (!analysis) { $('#ai-summary').innerHTML = `<div class="summary-content"><div class="summary-head"><span>MESSAGE PREVIEW</span><span>${escapeHtml(message.email || '')}</span></div><strong>${escapeHtml(message.subject)}</strong><p>${escapeHtml(message.snippet || message.body || '')}</p></div>`; return; }
+  if (!analysis) { $('#ai-summary').innerHTML = `<div class="summary-content"><div class="summary-head"><span>PREVIEW</span></div><small class="summary-address">${escapeHtml(message.email || '')}</small><strong>${escapeHtml(message.subject)}</strong><p>${escapeHtml(message.snippet || message.body || '')}</p></div>`; return; }
   $('#ai-summary').innerHTML = `<div class="summary-content"><div class="summary-head"><span>MESSAGE SUMMARY</span><span class="priority-tag ${analysis.importance}"><i class="small-dot"></i>${escapeHtml(analysis.importance.toUpperCase())}</span></div><strong>${escapeHtml(message.subject)}</strong><p>${escapeHtml(analysis.summary)}</p><p><b>Why:</b> ${escapeHtml(analysis.reason)}</p><div class="summary-head"><span>AI SUGGESTS</span><b>${analysis.suggestedAction === 'archive' ? 'Archive' : 'Keep'}</b></div></div>`;
 }
 async function startSprint() {

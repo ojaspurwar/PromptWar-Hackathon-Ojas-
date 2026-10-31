@@ -4,6 +4,23 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { URL } = require('node:url');
 
+function loadLocalEnv(file = path.join(__dirname, '.env')) {
+  let source;
+  try { source = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''); }
+  catch (error) { if (error.code === 'ENOENT') return; throw error; }
+  for (const line of source.split(/\r?\n/)) {
+    const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+    if (!match || process.env[match[1]] !== undefined) continue;
+    let value = match[2];
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      const quote = value[0]; value = value.slice(1, -1);
+      if (quote === '"') value = value.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    } else value = value.replace(/\s+#.*$/, '').trim();
+    process.env[match[1]] = value;
+  }
+}
+loadLocalEnv();
+
 const PORT = Number(process.env.PORT || 8080);
 const ROOT = path.join(__dirname, 'public');
 const IS_PROD = process.env.NODE_ENV === 'production';
@@ -223,7 +240,7 @@ function sameOrigin(req) {
 }
 function authorizationUrl(state) {
   const callback = process.env.GOOGLE_REDIRECT_URI || `${process.env.APP_BASE_URL || `http://localhost:${PORT}`}/auth/callback`;
-  const query = new URLSearchParams({ client_id:process.env.GOOGLE_CLIENT_ID, redirect_uri:callback, response_type:'code', access_type:'offline', prompt:'consent', scope:'openid email https://www.googleapis.com/auth/gmail.modify', state });
+  const query = new URLSearchParams({ client_id:process.env.GOOGLE_CLIENT_ID, redirect_uri:callback, response_type:'code', access_type:'offline', include_granted_scopes:'true', prompt:'consent', scope:'openid email https://www.googleapis.com/auth/gmail.modify', state });
   return `https://accounts.google.com/o/oauth2/v2/auth?${query}`;
 }
 async function route(req, res) {
@@ -356,4 +373,4 @@ const server = http.createServer((req,res) => route(req,res).catch(error => { co
 if (require.main === module) {
   server.listen(PORT,'0.0.0.0',() => console.log(`Inbox Sprint listening on ${PORT}`));
 }
-module.exports = { server, route, normalizeEmail, fallbackTriage, modelTriage, gmailActionOperation, parseCookies, sign, readSessionId, encrypt, decrypt };
+module.exports = { server, route, normalizeEmail, fallbackTriage, modelTriage, gmailActionOperation, parseCookies, sign, readSessionId, encrypt, decrypt, loadLocalEnv, authorizationUrl };

@@ -26,7 +26,24 @@ For connected Gmail, the first OpenRouter triage asks permission before sending 
 
 ## Connect Gmail
 
-Enable Gmail API and configure a Google OAuth web client with the local callback `http://localhost:8080/auth/callback`. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`; then add your account as an OAuth test user. The app reads up to 12 unread messages per round. It requests `gmail.modify` so confirmed mark-read, Archive, and Trash actions can be applied; each has an Undo path.
+The server reads a local `.env` file on startup without overriding environment variables that are already set. `.env` is git-ignored. If it does not exist yet, create it from the example and edit it locally:
+
+```powershell
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+notepad .env
+```
+
+In Google Cloud Console, select a project and enable the **Gmail API**. In **Google Auth Platform**, configure Branding and Audience, then add yourself under Test users. Create an OAuth client of type **Web application** and add this exact authorized redirect URI:
+
+```text
+http://localhost:8080/auth/callback
+```
+
+In Data Access, add `https://www.googleapis.com/auth/gmail.modify`. Put the OAuth client ID and client secret into `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, and set `GOOGLE_REDIRECT_URI` to the same exact URI above. Keep the client secret private; never paste it into chat or commit `.env`.
+
+Run `npm start`, open `http://localhost:8080`, and select **Connect Gmail**. Google redirects back to the local callback after consent. The app then loads up to 12 unread messages per round. It requests `gmail.modify` so the player's confirmed mark-read, Archive, and Trash actions can be applied and undone.
+
+`gmail.modify` is a restricted Gmail scope. Google limits testing-mode apps to listed test users, and test-user grants expire after seven days. A public production app using restricted Gmail scopes needs Google's verification; apps that store or transmit restricted-scope data on their servers must also complete an independent security assessment. See Google's [Gmail scope guidance](https://developers.google.com/workspace/gmail/api/auth/scopes) and [restricted-scope verification requirements](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification).
 
 ## Project shape
 
