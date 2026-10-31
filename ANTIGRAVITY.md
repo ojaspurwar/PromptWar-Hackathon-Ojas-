@@ -27,7 +27,8 @@ Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup become
 - Check responsive layout and key keyboard interactions before handoff.
 
 ## Current Status
-- User steering: focus on building and polishing the product; deployment is later. Preserve Cloud Run compatibility.
-- Existing implementation includes responsive triage UI, seeded inbox, AI provider integration, Gmail OAuth/API actions, consent, encrypted session token storage for cloud mode, keyboard shortcuts, and Cloud Run config.
-- Existing Node test suite previously passed 11 tests. Primary agent is now tightening UX, round actions, and local demo behavior; rerun checks after changes.
-- Next: complete a full local triage/confirm/undo loop, review failure states and keyboard controls, then report only real credential-dependent integration limits.
+- Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI scoring/provider integration (OpenRouter and LM Studio), confirmation dialogs for keep/archive/trash, and full undo functionality.
+- Automated test suite expanded and verified in `test/server.test.js`: 14 of 14 unit and integration tests passing, including encryption roundtrips, malformed model fallbacks, CSRF origin checks, and action lifecycles.
+- Keyboard navigation active (`J`/`K` navigation, `E` archive, `W` keep, `T` trash, `U` undo, `Enter` confirm).
+- Deployment instructions documented in `DEPLOYMENT.md`. Deployment to Cloud Run deferred until Google Cloud CLI authentication (`gcloud auth login`) and secrets are provided.
+- Next: Maintain monitor loop and verify any new user requirements or credentials as they arrive.
