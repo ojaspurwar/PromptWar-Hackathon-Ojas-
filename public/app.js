@@ -86,6 +86,7 @@ function awardXP(category,id,amount) {
   return true;
 }
 const state = { messages:[], analyses:{}, mode:'demo', connected:false, account:null, configured:false, started:false, cardsAnimated:false, seconds:180, timer:null, selected:null, done:new Map(), pointsById:new Map(), correctById:new Map(), history:[], score:0, correct:0, decisions:0, xpTotal:readPlayerXP(), pending:null, provider:'openrouter', notice:null };
+const reviewRequests = new Map();
 const avatarClasses = ['','violet','mint','peach','blue','gold','rose'];
 const icons = {
   archive:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6"/></svg>',
@@ -206,6 +207,32 @@ function renderMessageDetail(message, analysis) {
   const priority=escapeHtml(analysis.importance || 'medium');
   review.innerHTML=`<div class="detail-review-content"><div class="detail-priority-row"><span>PRIORITY</span><span class="priority-tag ${priority}"><i class="small-dot"></i>${priority.toUpperCase()}</span></div><div class="detail-review-block"><small>QUICK SUMMARY</small><p>${escapeHtml(analysis.summary || 'No summary available.')}</p></div><div class="detail-review-block"><small>WHY IT MATTERS</small><p>${escapeHtml(analysis.reason || 'No additional context available.')}</p></div><div class="detail-next-step"><span>✳</span><div><small>SUGGESTED NEXT STEP</small><strong>${analysis.suggestedAction==='archive'?'Archive':'Keep in inbox'}</strong></div></div></div>`;
 }
+async function requestMessageReview(message) {
+  if (state.analyses[message.id]) return;
+  if (reviewRequests.has(message.id)) return reviewRequests.get(message.id);
+  $('#ai-status').textContent='READING';
+  $('#detail-ai-review').innerHTML='<div class="detail-ai-loading"><span class="ai-scanline"></span><strong>Reading with LM Studio</strong><p>Checking priority, context, and a safe next step…</p></div>';
+  const request=(async()=>{
+    try {
+      const result=await api('/api/triage',{method:'POST',body:JSON.stringify({messages:[message]})});
+      const analysis=result.analyses?.[message.id];
+      if(!analysis)throw new Error('The model returned no review for this message.');
+      state.analyses[message.id]=analysis;
+      if(state.selected===message.id){
+        renderMessageDetail(message,analysis);
+        $('#ai-status').textContent=result.source==='lmstudio'?'LM STUDIO':result.source==='demo'?'LOCAL RULES':'ANALYZED';
+      }
+      if(result.notice)toast(result.notice,result.source==='demo'?'error':'');
+    } catch(error) {
+      if(state.selected===message.id){
+        $('#ai-status').textContent='OFFLINE';
+        $('#detail-ai-review').innerHTML=`<div class="detail-ai-empty detail-ai-error"><span>!</span><strong>Local model didn’t respond</strong><p>${escapeHtml(error.message)} Check that LM Studio is serving its model, then click this email again.</p></div>`;
+      }
+    } finally { reviewRequests.delete(message.id); }
+  })();
+  reviewRequests.set(message.id,request);
+  return request;
+}
 function selectMessage(id, {openDetails=false} = {}) {
   state.selected = id;
   const message = state.messages.find(m => m.id === id), analysis = state.analyses[id];
@@ -215,6 +242,7 @@ function selectMessage(id, {openDetails=false} = {}) {
   renderMessageDetail(message,analysis);
   const detailDialog=$('#mail-detail-dialog');
   if(openDetails && !detailDialog.open) detailDialog.showModal();
+  if(openDetails && !analysis) void requestMessageReview(message);
   if(detailDialog.open) { $('#detail-close').focus({preventScroll:true}); return; }
   const subjectButton=$(`.mail-card[data-id="${CSS.escape(id)}"] .mail-subject`);
   subjectButton?.focus({preventScroll:true});
@@ -325,7 +353,7 @@ $('#start-button').addEventListener('click',startSprint);
 $('#refresh-button').addEventListener('click',loadInbox);
 $('#reset-round').addEventListener('click',loadInbox);
 $('#help-button').addEventListener('click',()=>openDialog('#help-dialog'));
-$('#ai-settings').addEventListener('click',async()=>{$('#mail-detail-dialog').close();try{const c=await api('/api/config');$('#openrouter-state').textContent=c.providerConfig.openrouterReady?'API key configured':'No API key configured — smart demo scoring is active';$('#provider-badge').textContent=c.providerConfig.provider.toUpperCase();}catch{$('#openrouter-state').textContent='Connection status unavailable';}openDialog('#settings-dialog');});
+$('#ai-settings').addEventListener('click',async()=>{$('#mail-detail-dialog').close();try{const c=await api('/api/config'),p=c.providerConfig,localActive=p.provider==='lmstudio';$('#openrouter-state').textContent=localActive?'Standby — LM Studio is selected':p.openrouterReady?'API key configured':'No API key configured — smart demo scoring is active';$('#provider-badge').textContent=localActive?'STANDBY':p.provider.toUpperCase();$('#lmstudio-state').textContent=localActive?`Selected: ${p.lmStudioModel} · ${p.lmStudioBaseUrl}`:'Available for local development';$('#lmstudio-badge').textContent=localActive?'ACTIVE':'LOCAL';}catch{$('#openrouter-state').textContent='Connection status unavailable';$('#lmstudio-state').textContent='Connection status unavailable';}openDialog('#settings-dialog');});
 $('#detail-close').addEventListener('click',()=>$('#mail-detail-dialog').close());
 $('#mail-detail-dialog').addEventListener('close',()=>{const id=state.selected;if(id)$(`.mail-card[data-id="${CSS.escape(id)}"] .mail-subject`)?.focus({preventScroll:true});});
 $('#action-dialog').addEventListener('close',()=>{if($('#action-dialog').returnValue==='confirm')confirmPending();else state.pending=null;});
