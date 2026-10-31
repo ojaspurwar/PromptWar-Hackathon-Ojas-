@@ -7,6 +7,29 @@ const icons = {
   trash:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   keep:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>'
 };
+function localDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
+function getStreakData() {
+  try { return JSON.parse(localStorage.getItem('inboxSprintStreak') || '{"count":0,"lastDay":"","days":[]}'); }
+  catch { return {count:0,lastDay:'',days:[]}; }
+}
+function renderStreak() {
+  const saved=getStreakData(), today=localDateKey(), yesterday=localDateKey(new Date(Date.now()-86400000));
+  const currentCount=saved.lastDay===today || saved.lastDay===yesterday ? Number(saved.count)||0 : 0;
+  $('#streak-value').textContent=currentCount ? `${currentCount} day streak` : 'Start a streak today';
+  $('#streak-days').innerHTML=Array.from({length:5},(_,i)=>{
+    const monday=new Date();monday.setHours(0,0,0,0);monday.setDate(monday.getDate()-((monday.getDay()+6)%7)+i);
+    const key=localDateKey(monday), done=(saved.days||[]).includes(key), isToday=key===today;
+    return `<span class="day ${done?'done':''} ${isToday?'today':''}" title="${monday.toLocaleDateString([], {weekday:'long'})}">${monday.toLocaleDateString([], {weekday:'short'}).slice(0,1)}</span>`;
+  }).join('');
+}
+function recordCompletedSprint() {
+  const saved=getStreakData(), today=localDateKey(), yesterday=localDateKey(new Date(Date.now()-86400000));
+  if(saved.lastDay===today)return;
+  const count=saved.lastDay===yesterday?(Number(saved.count)||0)+1:1;
+  const days=[...new Set([...(saved.days||[]),today])].slice(-35);
+  try{localStorage.setItem('inboxSprintStreak',JSON.stringify({count,lastDay:today,days}));}catch{}
+  renderStreak();
+}
 async function api(path, options = {}) {
   const response = await fetch(path, { credentials:'same-origin', ...options, headers:{ ...(options.body ? {'content-type':'application/json'} : {}), ...(options.headers || {}) } });
   let data = {};
@@ -44,10 +67,10 @@ function render() {
   list.innerHTML = state.messages.map((m,i) => {
     const analysis = state.analyses[m.id], done = state.done.get(m.id), priority = priorityFor(m);
     const summary = analysis?.summary || '', reason = analysis?.reason || '';
-    return `<article class="mail-card ${done ? 'is-done' : ''} ${state.selected === m.id ? 'selected' : ''}" data-id="${escapeHtml(m.id)}" tabindex="0" role="button" aria-label="Review email from ${escapeHtml(m.sender)}: ${escapeHtml(m.subject)}">
+    return `<article class="mail-card ${done ? 'is-done' : ''} ${state.selected === m.id ? 'selected' : ''}" data-id="${escapeHtml(m.id)}">
       <span class="mail-avatar ${avatarClasses[i % avatarClasses.length]}">${escapeHtml(m.avatar || m.sender?.slice(0,1) || '?')}</span>
       <div class="mail-main"><div class="mail-person-row"><span class="mail-sender">${escapeHtml(m.sender)}</span><span class="mail-address">${escapeHtml(m.email || '')}</span><time class="mail-time">${escapeHtml(formatDate(m.date))}</time></div>
-      <div class="mail-subject">${escapeHtml(m.subject)}</div><div class="mail-snippet">${escapeHtml(m.snippet || '')}</div>
+      <button class="mail-subject" type="button" aria-label="Review email from ${escapeHtml(m.sender)}: ${escapeHtml(m.subject)}">${escapeHtml(m.subject)}</button><div class="mail-snippet">${escapeHtml(m.snippet || '')}</div>
       <div class="mail-flags">${state.started && analysis ? `<span class="priority-tag ${priority}"><i class="small-dot"></i>${priority[0].toUpperCase()+priority.slice(1)} priority</span>` : ''}${m.important ? '<span class="type-tag">Important</span>' : ''}${done ? `<span class="type-tag">${done === 'keep' ? 'Kept' : done === 'trash' ? 'In trash' : 'Archived'}</span>` : ''}</div>
       ${state.started && analysis ? `<div class="mail-ai"><span class="mini-spark">✳</span><p>${escapeHtml(summary)}</p><small>${escapeHtml(reason)}</small></div>` : ''}</div>
       <div class="mail-actions" aria-label="Email actions">${done ? `<button class="mail-action" data-action="undo" title="Undo action" aria-label="Undo action">↶</button>` : `<button class="mail-action keep" data-action="keep" title="Keep and mark reviewed" aria-label="Keep and mark reviewed">${icons.keep}</button><button class="mail-action archive" data-action="archive" title="Archive" aria-label="Archive">${icons.archive}</button><button class="mail-action trash" data-action="trash" title="Move to trash" aria-label="Move to trash">${icons.trash}</button>`}</div>
@@ -55,7 +78,6 @@ function render() {
   }).join('');
   $$('.mail-card').forEach(card => {
     card.addEventListener('click', e => { if (e.target.closest('[data-action]')) return; selectMessage(card.dataset.id); });
-    card.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('[data-action]')) { e.preventDefault(); selectMessage(card.dataset.id); } });
   });
   $$('[data-action]',list).forEach(button => button.addEventListener('click', e => { e.stopPropagation(); handleAction(button.closest('.mail-card').dataset.id,button.dataset.action); }));
   renderStats();
@@ -64,7 +86,7 @@ function renderStats() {
   $('#points-value').textContent = state.score;
   $('#accuracy-value').textContent = state.decisions ? `${Math.round(state.correct/state.decisions*100)}%` : '—';
   const done = state.messages.length > 0 && state.done.size === state.messages.length;
-  if (done) { $('#start-label').textContent = 'Sprint complete'; $('#ai-status').textContent = 'COMPLETE'; }
+  if (done) { $('#start-label').textContent = 'Sprint complete'; $('#ai-status').textContent = 'COMPLETE'; recordCompletedSprint(); }
 }
 function selectMessage(id) {
   state.selected = id;
@@ -99,7 +121,7 @@ function tick() {
   $('#timer-text').textContent = `${m}:${s}`;
   $('#timer-progress').style.strokeDashoffset = String(333 * (1 - state.seconds / 180));
   if (state.seconds <= 20) $('#timer-progress').style.stroke = '#dc5963';
-  if (state.seconds <= 0) { clearInterval(state.timer); state.timer = null; toast('Time’s up — your progress is saved.',''); }
+  if (state.seconds <= 0) { clearInterval(state.timer); state.timer = null; toast('Time is up — finish the remaining messages at your own pace.',''); }
 }
 function handleAction(id, action) {
   if (!state.started) { toast('Start your sprint to review AI summaries before choosing an action.'); return; }
@@ -119,7 +141,7 @@ function handleAction(id, action) {
 async function confirmPending() {
   if (!state.pending) return;
   const {message,action} = state.pending;
-  $('#action-dialog').close(); state.pending = null;
+  if ($('#action-dialog').open) $('#action-dialog').close(); state.pending = null;
   await applyAction(message,action);
 }
 async function applyAction(message,action) {
@@ -135,7 +157,7 @@ async function applyAction(message,action) {
     state.done.set(message.id,action);
     render();
     toast(action === 'keep' ? 'Kept in your inbox — nice call.' : action === 'archive' ? 'Archived. One less thing in your inbox.' : 'Moved to Trash.','success');
-    if (state.done.size === state.messages.length) { if (state.timer) clearInterval(state.timer); state.timer=null; $('#ai-status').textContent='COMPLETE'; $('#ai-summary').innerHTML='<div class="summary-placeholder"><span class="placeholder-icon">✦</span><p>Inbox reset complete. You cleared the noise and kept the signal.</p></div>'; }
+    if (state.done.size === state.messages.length) { if (state.timer) clearInterval(state.timer); state.timer=null; $('#ai-status').textContent='COMPLETE'; $('#ai-summary').innerHTML='<div class="summary-placeholder"><span class="placeholder-icon">✦</span><p>Inbox reset complete. You cleared the noise and kept the signal.</p></div>'; recordCompletedSprint(); }
     if (state.selected === message.id) { const next=state.messages.find(m=>!state.done.has(m.id)); if (next) selectMessage(next.id); }
   } catch(error) { toast(error.message,'error'); if(button) button.disabled=false; }
 }
@@ -158,7 +180,7 @@ $('#start-button').addEventListener('click',startSprint);
 $('#refresh-button').addEventListener('click',loadInbox);
 $('#reset-round').addEventListener('click',loadInbox);
 $('#help-button').addEventListener('click',()=>openDialog('#help-dialog'));
-$('#ai-settings').addEventListener('click',async()=>{try{const c=await api('/api/config');$('#openrouter-state').textContent=c.providerConfig.openrouterReady?'Connected and ready':'No API key configured — smart demo scoring is active';$('#provider-badge').textContent=c.providerConfig.provider.toUpperCase();}catch{$('#openrouter-state').textContent='Connection status unavailable';}openDialog('#settings-dialog');});
+$('#ai-settings').addEventListener('click',async()=>{try{const c=await api('/api/config');$('#openrouter-state').textContent=c.providerConfig.openrouterReady?'API key configured':'No API key configured — smart demo scoring is active';$('#provider-badge').textContent=c.providerConfig.provider.toUpperCase();}catch{$('#openrouter-state').textContent='Connection status unavailable';}openDialog('#settings-dialog');});
 $('#action-dialog').addEventListener('close',()=>{if($('#action-dialog').returnValue==='confirm')confirmPending();else state.pending=null;});
 $('#external-consent-check').addEventListener('change',e=>{$('#consent-confirm').disabled=!e.target.checked;});
 $('#external-consent-dialog').addEventListener('close',()=>{if($('#external-consent-dialog').returnValue==='consent'&&$('#external-consent-check').checked){sessionStorage.setItem('inboxsprint_openrouter_consent','v1');beginSprint();}});
@@ -167,7 +189,7 @@ $('#connect-button').addEventListener('click',async()=>{
   if(!state.configured){toast('Gmail OAuth is not configured yet. You can keep playing in sample mode.');return;}
   location.href='/auth/google';
 });
-$('#profile-button').addEventListener('click',()=>state.connected?toast(`Connected as ${state.account || 'your Gmail account'}. Use “Disconnect Gmail” to remove access.`):toast('You’re playing in a private sample workspace.'));
+$('#profile-button').addEventListener('click',()=>state.connected?toast(`Connected as ${state.account || 'your Gmail account'}. Use “Disconnect Gmail” to remove access.`):toast('Sample inbox is not connected to an email account.'));
 $('#round-menu').addEventListener('click',()=>toast('Your three-minute round begins when you start.'));
 $$('[data-nav="insights"]').forEach(button=>button.addEventListener('click',()=>toast('Insights will be available after your first sprint.')));
 const params=new URLSearchParams(location.search);
@@ -188,17 +210,19 @@ window.addEventListener('keydown', e => {
   const dialogs = $$('dialog').some(d => d.open);
   if (dialogs) return;
 
-  const currentId = state.selected || state.messages.find(m => !state.done.has(m.id))?.id;
+  const currentId = state.selected;
   const currentIndex = state.messages.findIndex(m => m.id === currentId);
 
   if (e.key === 'j' || e.key === 'ArrowDown') {
     e.preventDefault();
-    const next = state.messages.slice(currentIndex + 1).find(m => !state.done.has(m.id)) || state.messages[currentIndex + 1];
-    if (next) selectMessage(next.id);
+    const open=state.messages.filter(m=>!state.done.has(m.id));
+    const next=open.find(m=>state.messages.indexOf(m)>currentIndex)||open[0];
+    if(next)selectMessage(next.id);
   } else if (e.key === 'k' || e.key === 'ArrowUp') {
     e.preventDefault();
-    const prev = [...state.messages.slice(0, Math.max(0, currentIndex))].reverse().find(m => !state.done.has(m.id)) || state.messages[currentIndex - 1];
-    if (prev) selectMessage(prev.id);
+    const open=state.messages.filter(m=>!state.done.has(m.id));
+    const prev=[...open].reverse().find(m=>state.messages.indexOf(m)<currentIndex)||open.at(-1);
+    if(prev)selectMessage(prev.id);
   } else if (e.key === 'e' || e.key === 'a') {
     if (currentId) { e.preventDefault(); handleAction(currentId, 'archive'); }
   } else if (e.key === 't' || e.key === '#' || e.key === 'Delete') {
@@ -211,4 +235,5 @@ window.addEventListener('keydown', e => {
   }
 });
 
+renderStreak();
 loadInbox();
