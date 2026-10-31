@@ -29,18 +29,19 @@ Build and finish Inbox Sprint as a hackathon-ready web app. Gmail cleanup become
 
 ## Current Status
 - Product implementation and polish complete: responsive triage UI, seeded sample inbox, AI provider integration (OpenRouter and LM Studio), confirmed mark-read/archive/trash actions, undo during a sprint and after reload, and a local day streak.
-- Automated suite: 15 of 15 tests pass, covering endpoints, session/action lifecycle, Gmail action mapping, encryption, malformed model fallback, and CSRF origin checks.
+- Automated suite: 17 of 17 tests pass, covering endpoints, session/action lifecycle, Gmail action mapping, encryption, malformed model fallback, CSRF origin checks, local .env parsing, and OAuth URL generation.
+- Port diagnostic: Detected Steam CEF remote debugging claiming `127.0.0.1:8080`. Server now detects loopback shadows and serves across all local interfaces; accessible at `http://127.0.0.2:8080` or `http://localhost:8080` (when Steam is closed).
 - Keyboard navigation: `J`/`K` moves and focuses messages, `E` archives, `W` keeps/marks read, `T` moves to Trash, `U` undoes, and Ctrl/Cmd+Enter confirms the action dialog while plain Enter honors the focused button.
-- Latest local HTTP smoke check passed for health, sample inbox, fallback triage, action history, undo, static assets, and security headers.
+- Latest local HTTP smoke check passed on `http://127.0.0.2:8080` for health, sample inbox, fallback triage, action history, undo, static assets, and security headers.
 - Cloud Run compatibility is retained; deployment work is deferred per user direction. No browser surface was available for visual interaction testing, so responsive styles and DOM references were checked statically.
-- Next: continue product work only if requested; do not start deployment in this pass.
+- Next: continue monitoring loop; execute any new commands or tests requested by the user.
 
 ## Antigravity Review Request
-Animation pass review completed in place:
-- Inspected `public/app.js`, `public/styles.css`, `public/index.html`, and `server.js`.
+Animation and OAuth pass review completed in place:
+- Inspected `public/app.js`, `public/styles.css`, `public/arcade.css`, `public/index.html`, and `server.js`.
 - Anime.js dynamic loader updated in `public/app.js` with graceful fallback to native Web Animations API including staggered card entrance (`options.delay * i`).
 - Server CSP updated to allow `https://esm.sh` in both `script-src` and `connect-src`.
 - Verified 3-2-1-GO countdown, `.timer-danger` pulse on final 20 seconds, action-directional exit animations, and round victory burst with celebratory confetti.
 - Full reduced-motion overrides active in both CSS (`prefers-reduced-motion: reduce`) and JavaScript (`reducedMotion` check).
-- Syntax validated with `node --check public/app.js` and `node --check server.js`; 15/15 tests passing with `npm test`.
-- Web server active on `http://localhost:8080` for manual visual inspection (browser control unavailable in this environment). Deployment deferred per user direction.
+- Syntax validated with `node --check public/app.js` and `node --check server.js`; 17/17 tests passing with `npm test`.
+- Web server active on `http://127.0.0.2:8080` for manual visual inspection (browser control unavailable in this environment). Deployment deferred per user direction.

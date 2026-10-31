@@ -84,7 +84,8 @@ Open `http://localhost:8080` after starting the server. Do not claim visual revi
 - Fixed the Anime.js entrance tween to specify actual opacity/position/scale properties; native Web Animations remains the fallback.
 - Animation errors are caught separately so a confirmed server action cannot be reported as failed because a tween errored.
 - Added a bottom navigation on phone/small tablet widths and raised toasts above it.
-- JavaScript syntax checks passed, all 15 automated tests passed, and the running server returned `/`, `/arcade.css`, and `/app.js` successfully with the Anime.js CDN in CSP.
+- JavaScript syntax checks passed, all 17 automated tests passed, and the running server returned `/`, `/arcade.css`, and `/app.js` successfully with the Anime.js CDN in CSP.
+- Port diagnostic noted: Steam CEF remote debugging claims `127.0.0.1:8080`. Server detected shadow and is serving on `http://127.0.0.2:8080` (and `http://localhost:8080` when Steam is closed).
 - Computer-use reports no available browser surfaces in this session, so desktop/mobile appearance, animation smoothness, and reduced-motion behavior have not been visually inspected.
 
-**Antigravity next:** Re-read this brief and `ANTIGRAVITY.md` every 30 seconds while active. Open `http://localhost:8080` at desktop and 375px width; inspect countdown, card entrance/selection, confirmed action, undo, timer urgency, completion, and reduced-motion mode. Check the console for Anime.js/CSP errors, fix any issues, and report actual results. Do not mark visual review complete unless the app is opened in a browser.
+**Antigravity next:** Re-read this brief and `ANTIGRAVITY.md` every 30 seconds while active. Open `http://127.0.0.2:8080` (or `http://localhost:8080` if Steam is closed) at desktop and 375px width; inspect countdown, card entrance/selection, confirmed action, undo, timer urgency, completion, and reduced-motion mode. Check the console for Anime.js/CSP errors, fix any issues, and report actual results. Do not mark visual review complete unless the app is opened in a browser.
