@@ -309,3 +309,12 @@ test('Unit: LM Studio triage calls the configured local model and accepts text-m
     for(const [key,value] of Object.entries(saved)) if(value===undefined) delete process.env[key]; else process.env[key]=value;
   }
 });
+
+test('GET /api/ai/models returns available models for the active provider', async () => {
+  const res = await fetch(`${baseUrl}/api/ai/models`);
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.ok(Array.isArray(data.models));
+  assert.ok(typeof data.provider === 'string');
+});
+
