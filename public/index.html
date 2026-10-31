@@ -100,6 +100,11 @@
           <div class="detail-sender"><span class="detail-avatar" id="detail-avatar">?</span><div><strong id="detail-sender">Sender</strong><small id="detail-email"></small></div><time id="detail-date"></time></div>
           <h2 id="detail-subject">Message subject</h2>
           <div class="detail-body" id="detail-body"></div>
+          <div class="detail-actions" aria-label="Email actions">
+            <button class="detail-action keep" type="button" data-detail-action="keep"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Keep · mark read</span></button>
+            <button class="detail-action archive" type="button" data-detail-action="archive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6"/></svg><span>Archive</span></button>
+            <button class="detail-action trash" type="button" data-detail-action="trash"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg><span>Move to Trash</span></button>
+          </div>
         </section>
         <aside class="detail-ai-pane" aria-label="AI review">
           <div class="detail-ai-heading"><span class="sparkle"><svg viewBox="0 0 24 24"><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3Zm7 11 .9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14Z"/></svg></span><div><strong>AI review</strong><small>Context to make your call</small></div><span class="ai-status" id="ai-status">READY</span></div>
