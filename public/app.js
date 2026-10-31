@@ -1,5 +1,13 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+const aiDockBreakpoint = matchMedia('(min-width: 901px)');
+function placeAIReview() {
+  const card = $('.ai-card');
+  const dock = $(aiDockBreakpoint.matches ? '#ai-sidebar-dock' : '#ai-inbox-dock');
+  if (card && dock && card.parentElement !== dock) dock.append(card);
+}
+placeAIReview();
+aiDockBreakpoint.addEventListener('change', placeAIReview);
 let anime = null;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 import('https://esm.sh/animejs@4.1.3').then(module => { anime = module?.animate ? module : (module?.default?.animate ? module.default : module); }).catch(() => {});
